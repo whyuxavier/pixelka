@@ -1,302 +1,238 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="uk" class="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Піксель-редактор</title>
+<title>Піксельна малювалка</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
-<style>
-  :root {
-    --bg: #eef1f8;
-    --panel: #ffffff;
-    --ink: #1b2340;
-    --muted: #5d6685;
-    --line: #d5dbec;
-    --accent: #3b5bff;
-    --accent-ink: #ffffff;
-    --danger: #e5384f;
-    --ok: #12a266;
-    --radius: 14px;
-  }
-  :root { color-scheme: light; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-      --bg: #12162a;
-      --panel: #1c2240;
-      --ink: #eef0fb;
-      --muted: #9aa3c7;
-      --line: #313a66;
-      --accent: #6f86ff;
-      --accent-ink: #0d1230;
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          darkBg: '#0a0a0a',
+          darkCard: '#121212',
+          darkBorder: '#262626',
+          lightBg: '#f8fafc',
+          lightCard: '#ffffff',
+          lightBorder: '#e2e8f0',
+        }
+      }
     }
   }
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --bg: #12162a;
-    --panel: #1c2240;
-    --ink: #eef0fb;
-    --muted: #9aa3c7;
-    --line: #313a66;
-    --accent: #6f86ff;
-    --accent-ink: #0d1230;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; }
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  
   body {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
-    min-height: 100vh;
-    padding: 20px;
+    font-family: 'Inter', sans-serif;
   }
-  .app {
-    max-width: 1100px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 330px 1fr;
-    gap: 20px;
-    align-items: start;
-  }
-  .panel {
-    background: var(--panel);
-    border: 2px solid var(--line);
-    border-radius: var(--radius);
-    padding: 18px;
-  }
-  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-  .theme {
-    flex: none; width: 42px; height: 42px; padding: 0;
-    display: grid; place-items: center;
-    background: var(--bg); border: 2px solid var(--line); border-radius: 12px;
-  }
-  .theme svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .theme .moon { display: none; }
-  :root[data-mode="light"] .theme .sun { display: none; }
-  :root[data-mode="light"] .theme .moon { display: block; }
-  .topbar { position: relative; }
-  .infoBtn { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700; font-size: 20px; }
-  .infoBtn[aria-expanded="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-  .help {
-    position: absolute; top: calc(100% + 10px); right: 0; z-index: 5;
-    width: min(400px, 100%);
-    background: var(--panel); color: var(--ink);
-    border: 2px solid var(--ink); border-radius: var(--radius);
-    padding: 16px 18px; box-shadow: 6px 6px 0 var(--line);
-  }
-  .help[hidden] { display: none; }
-  .help h3 { margin: 0 0 6px; font-size: 15px; }
-  .help h3:not(:first-child) { margin-top: 14px; }
-  .help p { margin: 0 0 8px; font-size: 14px; line-height: 1.5; color: var(--muted); }
-  .keys { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin: 0; }
-  .keys div { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-  .keys dt {
-    min-width: 28px; padding: 2px 6px; text-align: center; font-weight: 700;
-    font-family: ui-monospace, Consolas, monospace; font-size: 12px;
-    background: var(--bg); border: 2px solid var(--line); border-radius: 6px;
-  }
-  .keys dd { margin: 0; }
-  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: .5px; }
-  .sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
-  h2 { font-size: 15px; margin: 18px 0 8px; color: var(--muted); font-weight: 700; }
-  h2:first-of-type { margin-top: 0; }
-
-  button, select, input { font: inherit; color: inherit; }
-  button { cursor: pointer; }
-  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-
-  .row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .chip {
-    flex: 1 1 0;
-    min-width: 56px;
-    padding: 9px 6px;
-    background: var(--bg);
-    border: 2px solid var(--line);
-    border-radius: 10px;
-    font-weight: 700;
-    text-align: center;
-  }
-  .chip[aria-pressed="true"] {
-    background: var(--accent);
-    color: var(--accent-ink);
-    border-color: var(--accent);
-  }
-  .tools .chip { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; padding: 10px 4px; }
-  #shapes .chip { flex: 1 1 28%; }
-  .tools svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-  .palette { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
-  .sw {
-    aspect-ratio: 1;
-    border-radius: 8px;
-    border: 2px solid var(--line);
-    padding: 0;
-  }
-  .sw[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 1px; }
-
-  .picker { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
-  .picker input[type="color"] {
-    width: 56px; height: 44px; padding: 0; border: 2px solid var(--line);
-    border-radius: 10px; background: none; cursor: pointer;
-  }
-  .picker input[type="text"] {
-    flex: 1; min-width: 0; padding: 10px; border: 2px solid var(--line);
-    border-radius: 10px; background: var(--bg); font-family: ui-monospace, Consolas, monospace;
-  }
-  .rgb { display: grid; grid-template-columns: 18px 1fr 52px; gap: 6px 8px; align-items: center; }
-  .rgb label { font-weight: 700; }
-  .rgb input[type="range"] { width: 100%; }
-  .rgb input[type="number"] {
-    width: 100%; padding: 4px; border: 2px solid var(--line);
-    border-radius: 8px; background: var(--bg);
-  }
-  #rS { accent-color: #e5384f; } #gS { accent-color: #12a266; } #bS { accent-color: #3b5bff; }
-
-  .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; }
-  select {
-    width: 100%; padding: 10px; border: 2px solid var(--line);
-    border-radius: 10px; background: var(--bg);
-  }
-  .actions { display: grid; gap: 8px; margin-top: 18px; }
-  .btn {
-    padding: 12px; border: 0; border-radius: 12px; font-weight: 700;
-    background: var(--bg); border: 2px solid var(--line);
-  }
-  .btn.save { background: var(--ok); border-color: var(--ok); color: #fff; font-size: 16px; }
-  .btn.clear { background: var(--danger); border-color: var(--danger); color: #fff; }
-  .btn:disabled { opacity: .45; cursor: not-allowed; }
-
-  .stage { display: flex; flex-direction: column; gap: 12px; align-items: center; }
-  .topbar { display: flex; gap: 8px; width: 100%; max-width: 640px; align-items: center; }
-  .topbar .spacer { flex: 1; }
-  .topbar .btn { padding: 8px 14px; }
-  .info { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
-  .board {
-    width: 100%; max-width: 640px; aspect-ratio: 1;
-    border: 2px solid var(--ink); border-radius: 6px;
-    background: #fff; overflow: hidden;
-    box-shadow: 8px 8px 0 var(--line);
-  }
+  
   canvas {
-    display: block; width: 100%; height: 100%;
-    image-rendering: pixelated; touch-action: none; cursor: crosshair;
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    touch-action: none;
+    cursor: crosshair;
   }
-  .hint { color: var(--muted); font-size: 13px; text-align: center; max-width: 640px; }
 
-  @media (max-width: 820px) {
-    .app { grid-template-columns: 1fr; }
-    .stage { order: -1; }
+  :focus-visible {
+    outline: 2px solid #22c55e;
+    outline-offset: 2px;
   }
 </style>
 </head>
-<body>
-<div class="app">
+<body class="min-h-screen bg-lightBg dark:bg-darkBg text-slate-800 dark:text-neutral-200 antialiased selection:bg-emerald-500/20 selection:text-emerald-400 p-4 lg:p-8 transition-colors duration-300">
 
-  <aside class="panel" aria-label="Панель інструментів">
-    <h1>Піксель-редактор</h1>
-    <p class="sub">Малюй піксельні картинки та зберігай їх у PNG.</p>
-
-    <h2>Розмір полотна</h2>
-    <div class="row" id="sizes" role="group" aria-label="Розмір полотна">
-      <button class="chip" data-size="8" aria-pressed="false">8×8</button>
-      <button class="chip" data-size="16" aria-pressed="true">16×16</button>
-      <button class="chip" data-size="32" aria-pressed="false">32×32</button>
-      <button class="chip" data-size="64" aria-pressed="false">64×64</button>
+  <!-- Glassmorphic Header -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-lightCard/80 dark:bg-darkCard/80 border border-lightBorder dark:border-darkBorder rounded-2xl max-w-6xl mx-auto px-6 py-4 mb-6 flex items-center justify-between shadow-lg shadow-slate-200/50 dark:shadow-black/50 transition-colors duration-300">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-lg shadow-inner">
+        🎨
+      </div>
+      <div>
+        <h1 class="text-slate-900 dark:text-white font-bold text-base lg:text-lg tracking-tight">Малювалка</h1>
+        <p class="text-xs text-slate-500 dark:text-neutral-400 hidden sm:block">Малюй піксельні картинки та зберігай їх у PNG</p>
+      </div>
     </div>
-
-    <h2>Інструменти</h2>
-    <div class="row tools" id="tools" role="group" aria-label="Інструменти">
-      <button class="chip" data-tool="pen" aria-pressed="true" title="Пензлик (B)">
-        <svg viewBox="0 0 24 24"><path d="M4 20l1-4L16 5a2.1 2.1 0 013 3L8 19z"/><path d="M14 7l3 3"/></svg>Пензлик</button>
-      <button class="chip" data-tool="eraser" aria-pressed="false" title="Гумка (E)">
-        <svg viewBox="0 0 24 24"><path d="M7 20h13"/><path d="M5 15l9-9a2 2 0 013 0l2 2a2 2 0 010 3l-8 8H8z"/></svg>Гумка</button>
-      <button class="chip" data-tool="fill" aria-pressed="false" title="Заливка (G)">
-        <svg viewBox="0 0 24 24"><path d="M5 11l7-7 7 7-7 7z"/><path d="M20 16c0 1.5-1 2.5-1 2.5S18 17.500 18 16.500"/><path d="M3 20h18"/></svg>Заливка</button>
-      <button class="chip" data-tool="pick" aria-pressed="false" title="Піпетка (I)">
-        <svg viewBox="0 0 24 24"><path d="M14 6l4 4"/><path d="M16 4a2 2 0 013 3l-2 2-3-3z"/><path d="M14 8l-9 9v3h3l9-9"/></svg>Піпетка</button>
-    </div>
-
-    <h2>Фігури</h2>
-    <div class="row tools" id="shapes" role="group" aria-label="Фігури">
-      <button class="chip" data-tool="line" aria-pressed="false" title="Лінія (L)">
-        <svg viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg>Лінія</button>
-      <button class="chip" data-tool="rect" aria-pressed="false" title="Квадрат (R)">
-        <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></svg>Квадрат</button>
-      <button class="chip" data-tool="triangle" aria-pressed="false" title="Трикутник (T)">
-        <svg viewBox="0 0 24 24"><path d="M12 5l8 14H4z"/></svg>Трикутник</button>
-      <button class="chip" data-tool="circle" aria-pressed="false" title="Коло (O)">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg>Коло</button>
-      <button class="chip" data-tool="polygon" aria-pressed="false" title="Багатокутник (P)">
-        <svg viewBox="0 0 24 24"><path d="M12 4l8 6-3 10H7L4 10z"/></svg>Багатокутник</button>
-    </div>
-    <label class="check"><input type="checkbox" id="fillShapes"> Заповнювати фігури</label>
-
-    <h2>Палітра</h2>
-    <div class="palette" id="palette" role="group" aria-label="Стандартні кольори"></div>
-
-    <h2>Будь-який колір</h2>
-    <div class="picker">
-      <input type="color" id="colorInput" value="#000000" aria-label="Вибір кольору">
-      <input type="text" id="hexInput" value="#000000" maxlength="7" spellcheck="false" aria-label="HEX-код кольору">
-    </div>
-    <div class="rgb">
-      <label for="rS" style="color:#e5384f">R</label><input type="range" id="rS" min="0" max="255" value="0"><input type="number" id="rN" min="0" max="255" value="0">
-      <label for="gS" style="color:#12a266">G</label><input type="range" id="gS" min="0" max="255" value="0"><input type="number" id="gN" min="0" max="255" value="0">
-      <label for="bS" style="color:#3b5bff">B</label><input type="range" id="bS" min="0" max="255" value="0"><input type="number" id="bN" min="0" max="255" value="0">
-    </div>
-
-    <h2>Збереження</h2>
-    <select id="exportSize" aria-label="Розмір PNG-файлу">
-      <option value="0">Справжній розмір (1 піксель = 1 піксель)</option>
-      <option value="512">512 × 512</option>
-      <option value="1024" selected>1024 × 1024</option>
-      <option value="2048">2048 × 2048</option>
-    </select>
-    <label class="check"><input type="checkbox" id="transparent" checked> Прозорий фон у файлі</label>
-    <label class="check"><input type="checkbox" id="gridToggle" checked> Показувати сітку</label>
-
-    <div class="actions">
-      <button class="btn save" id="saveBtn">Зберегти PNG</button>
-      <button class="btn clear" id="clearBtn">Очистити</button>
-    </div>
-  </aside>
-
-  <main class="stage">
-    <div class="topbar">
-      <button class="btn" id="undoBtn" title="Крок назад (Ctrl+Z)">↶ Назад</button>
-      <button class="btn" id="redoBtn" title="Крок уперед (Ctrl+Y)">↷ Вперед</button>
-      <span class="spacer"></span>
-      <span class="info" id="info">16×16</span>
-      <button class="theme infoBtn" id="infoBtn" type="button" title="Підказки" aria-label="Підказки" aria-expanded="false" aria-controls="helpBox">i</button>
-      <button class="theme" id="themeBtn" type="button" title="Змінити тему" aria-label="Змінити тему">
-        <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.900 4.900l1.400 1.400M17.700 17.700l1.400 1.400M4.900 19.100l1.400-1.400M17.700 6.300l1.400-1.400"/></svg>
-        <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.500A8 8 0 019.500 4 8 8 0 1020 14.500z"/></svg>
+    
+    <div class="flex items-center gap-2">
+      <button class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder text-slate-700 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white text-xs lg:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed" id="undoBtn" title="Крок назад (Ctrl+Z)">Скасувати</button>
+      <button class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder text-slate-700 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white text-xs lg:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed" id="redoBtn" title="Крок уперед (Ctrl+Y)">Повернути</button>
+      <span class="text-xs font-mono text-slate-400 dark:text-neutral-500 px-2 hidden md:inline" id="info">16×16</span>
+      
+      <!-- Кнопка Підказки -->
+      <button class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder flex items-center justify-center text-slate-600 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all text-sm font-bold font-serif italic" id="infoBtn" type="button" title="Підказки" aria-label="Підказки" aria-expanded="false" aria-controls="helpBox">i</button>
+      
+      <!-- Перемикач теми -->
+      <button class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder flex items-center justify-center text-slate-600 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all" id="themeBtn" type="button" title="Змінити тему" aria-label="Змінити тему">
+        <svg class="w-5 h-5 hidden dark:block stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="w-5 h-5 block dark:hidden stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z"/></svg>
       </button>
-      <div class="help" id="helpBox" role="dialog" aria-label="Підказки" hidden>
-        <h3>Фігури</h3>
-        <p>Лінію, квадрат, трикутник і коло малюй протягуванням. Квадрат і коло виходять рівними, а щоб розтягнути їх у прямокутник чи овал, тримай Shift.</p>
-        <p>Багатокутник будується кліками по точках. Закінчи його кліком по першій точці, подвійним кліком або клавішею Enter, а Esc скасує побудову.</p>
-        <h3>Гарячі клавіші</h3>
-        <dl class="keys">
-          <div><dt>B</dt><dd>Пензлик</dd></div>
-          <div><dt>E</dt><dd>Гумка</dd></div>
-          <div><dt>G</dt><dd>Заливка</dd></div>
-          <div><dt>I</dt><dd>Піпетка</dd></div>
-          <div><dt>L</dt><dd>Лінія</dd></div>
-          <div><dt>R</dt><dd>Квадрат</dd></div>
-          <div><dt>T</dt><dd>Трикутник</dd></div>
-          <div><dt>O</dt><dd>Коло</dd></div>
-          <div><dt>P</dt><dd>Багатокутник</dd></div>
-          <div><dt>Ctrl + Z</dt><dd>Крок назад</dd></div>
-          <div><dt>Ctrl + Y</dt><dd>Крок уперед</dd></div>
+
+      <!-- Допоміжне вікно підказок -->
+      <div class="help absolute top-[calc(100%+10px)] right-0 z-50 w-[min(400px,90vw)] bg-lightCard dark:bg-darkCard border border-lightBorder dark:border-darkBorder rounded-2xl p-5 shadow-2xl shadow-slate-300/60 dark:shadow-black/80 text-sm" id="helpBox" role="dialog" aria-label="Підказки" hidden>
+        <h3 class="text-slate-900 dark:text-white font-semibold mb-2">Фігури</h3>
+        <p class="text-slate-500 dark:text-neutral-400 text-xs mb-3">Лінію, квадрат, трикутник і коло малюй протягуванням. Квадрат і коло виходять рівними, а щоб розтягнути їх у прямокутник чи овал, тримай Shift.</p>
+        <p class="text-slate-500 dark:text-neutral-400 text-xs mb-4">Багатокутник будується кліками по точках. Закінчи його кліком по першій точці, подвійним кліком або клавішею Enter, а Esc скасує побудову.</p>
+        
+        <h3 class="text-slate-900 dark:text-white font-semibold mb-2">Гарячі клавіші</h3>
+        <dl class="grid grid-cols-2 gap-2 text-xs">
+          <div class="flex items-center gap-2"><dt class="px-1.5 py-0.5 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded text-emerald-600 dark:text-emerald-400 font-mono">B</dt><dd class="text-slate-600 dark:text-neutral-400">Пензлик</dd></div>
+          <div class="flex items-center gap-2"><dt class="px-1.5 py-0.5 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded text-emerald-600 dark:text-emerald-400 font-mono">E</dt><dd class="text-slate-600 dark:text-neutral-400">Гумка</dd></div>
+          <div class="flex items-center gap-2"><dt class="px-1.5 py-0.5 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded text-emerald-600 dark:text-emerald-400 font-mono">G</dt><dd class="text-slate-600 dark:text-neutral-400">Заливка</dd></div>
+          <div class="flex items-center gap-2"><dt class="px-1.5 py-0.5 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded text-emerald-600 dark:text-emerald-400 font-mono">I</dt><dd class="text-slate-600 dark:text-neutral-400">Піпетка</dd></div>
+          <div class="flex items-center gap-2"><dt class="px-1.5 py-0.5 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded text-emerald-600 dark:text-emerald-400 font-mono">L</dt><dd class="text-slate-600 dark:text-neutral-400">Лінія</dd></div>
+          <div class="flex items-center gap-2"><dt class="px-1.5 py-0.5 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded text-emerald-600 dark:text-emerald-400 font-mono">R</dt><dd class="text-slate-600 dark:text-neutral-400">Квадрат</dd></div>
+          <div class="flex items-center gap-2"><dt class="px-1.5 py-0.5 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded text-emerald-600 dark:text-emerald-400 font-mono">T</dt><dd class="text-slate-600 dark:text-neutral-400">Трикутник</dd></div>
+          <div class="flex items-center gap-2"><dt class="px-1.5 py-0.5 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded text-emerald-600 dark:text-emerald-400 font-mono">O</dt><dd class="text-slate-600 dark:text-neutral-400">Коло</dd></div>
+          <div class="flex items-center gap-2"><dt class="px-1.5 py-0.5 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded text-emerald-600 dark:text-emerald-400 font-mono">P</dt><dd class="text-slate-600 dark:text-neutral-400">Багатокутник</dd></div>
+          <div class="flex items-center gap-2"><dt class="px-1.5 py-0.5 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded text-emerald-600 dark:text-emerald-400 font-mono">Ctrl+Z</dt><dd class="text-slate-600 dark:text-neutral-400">Назад</dd></div>
         </dl>
       </div>
     </div>
-    <div class="board"><canvas id="canvas" width="640" height="640" aria-label="Полотно для малювання"></canvas></div>
+  </header>
 
-  </main>
+  <!-- Головний контейнер -->
+  <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 items-start">
 
-</div>
+    <!-- Бічна панель інструментів -->
+    <aside class="bg-lightCard dark:bg-darkCard border border-lightBorder dark:border-darkBorder rounded-2xl p-5 shadow-xl shadow-slate-200/60 dark:shadow-black/50 transition-all duration-300 relative overflow-hidden group">
+      <!-- Фоновий градієнт при наведенні -->
+      <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+
+      <div class="relative z-10 space-y-5">
+        
+        <!-- Розмір полотна -->
+        <div>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-neutral-400 mb-2.5">Розмір полотна</h2>
+          <div class="grid grid-cols-4 gap-2" id="sizes" role="group" aria-label="Розмір полотна">
+            <button class="py-2 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-xs font-semibold text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-size="8" aria-pressed="false">8×8</button>
+            <button class="py-2 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-xs font-semibold text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-size="16" aria-pressed="true">16×16</button>
+            <button class="py-2 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-xs font-semibold text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-size="32" aria-pressed="false">32×32</button>
+            <button class="py-2 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-xs font-semibold text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-size="64" aria-pressed="false">64×64</button>
+          </div>
+        </div>
+
+        <!-- Інструменти -->
+        <div>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-neutral-400 mb-2.5">Інструменти</h2>
+          <div class="grid grid-cols-4 gap-2 tools" id="tools" role="group" aria-label="Інструменти">
+            <button class="flex flex-col items-center justify-center gap-1.5 p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-xs font-medium text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-tool="pen" aria-pressed="true" title="Пензлик (B)">
+              <svg class="w-5 h-5 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5a2.1 2.1 0 013 3L8 19z"/><path d="M14 7l3 3"/></svg>Пензлик
+            </button>
+            <button class="flex flex-col items-center justify-center gap-1.5 p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-xs font-medium text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-tool="eraser" aria-pressed="false" title="Гумка (E)">
+              <svg class="w-5 h-5 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M7 20h13"/><path d="M5 15l9-9a2 2 0 013 0l2 2a2 2 0 010 3l-8 8H8z"/></svg>Гумка
+            </button>
+            <button class="flex flex-col items-center justify-center gap-1.5 p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-xs font-medium text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-tool="fill" aria-pressed="false" title="Заливка (G)">
+              <svg class="w-5 h-5 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M5 11l7-7 7 7-7 7z"/><path d="M20 16c0 1.5-1 2.5-1 2.5S18 17.5 18 16.5"/><path d="M3 20h18"/></svg>Заливка
+            </button>
+            <button class="flex flex-col items-center justify-center gap-1.5 p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-xs font-medium text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-tool="pick" aria-pressed="false" title="Піпетка (I)">
+              <svg class="w-5 h-5 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M14 6l4 4"/><path d="M16 4a2 2 0 013 3l-2 2-3-3z"/><path d="M14 8l-9 9v3h3l9-9"/></svg>Піпетка
+            </button>
+          </div>
+        </div>
+
+        <!-- Фігури (із можливістю згортання, за замовчуванням приховані) -->
+        <div>
+          <button type="button" id="toggleShapesBtn" class="w-full flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-neutral-400 mb-2.5 hover:text-slate-600 dark:hover:text-neutral-200 transition select-none cursor-pointer">
+            <span class="flex items-center gap-1.5">
+              <span>Фігури</span>
+              <span id="shapesArrow" class="transition-transform duration-200 text-[10px] inline-block">-▶</span>
+            </span>
+          </button>
+          
+          <div id="shapesContainer" class="hidden space-y-2.5 pt-0.5">
+            <div class="grid grid-cols-3 gap-1.5 tools" id="shapes" role="group" aria-label="Фігури">
+              <button class="flex flex-col items-center justify-center gap-1 p-2 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-[11px] font-medium text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-tool="line" aria-pressed="false" title="Лінія (L)">
+                <svg class="w-4 h-4 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg>
+                <span class="truncate max-w-full px-0.5">Лінія</span>
+              </button>
+              <button class="flex flex-col items-center justify-center gap-1 p-2 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-[11px] font-medium text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-tool="rect" aria-pressed="false" title="Квадрат (R)">
+                <svg class="w-4 h-4 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></svg>
+                <span class="truncate max-w-full px-0.5">Квадрат</span>
+              </button>
+              <button class="flex flex-col items-center justify-center gap-1 p-2 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-[11px] font-medium text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-tool="triangle" aria-pressed="false" title="Трикутник (T)">
+                <svg class="w-4 h-4 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M12 5l8 14H4z"/></svg>
+                <span class="truncate max-w-full px-0.5" title="Трикутник">Трикутник</span>
+              </button>
+              <button class="flex flex-col items-center justify-center gap-1 p-2 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-[11px] font-medium text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-tool="circle" aria-pressed="false" title="Коло (O)">
+                <svg class="w-4 h-4 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg>
+                <span class="truncate max-w-full px-0.5">Коло</span>
+              </button>
+              <button class="col-span-2 flex flex-row items-center justify-center gap-1.5 p-2 bg-slate-100 hover:bg-slate-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-lightBorder dark:border-darkBorder rounded-xl text-[11px] font-medium text-slate-700 dark:text-neutral-300 transition aria-[pressed=true]:bg-emerald-500/10 aria-[pressed=true]:text-emerald-600 dark:aria-[pressed=true]:text-emerald-400 aria-[pressed=true]:border-emerald-500/40" data-tool="polygon" aria-pressed="false" title="Багатокутник (P)">
+                <svg class="w-4 h-4 stroke-current fill-none stroke-[2] flex-shrink-0" viewBox="0 0 24 24"><path d="M12 4l8 6-3 10H7L4 10z"/></svg>
+                <span class="truncate max-w-full">Багатокутник</span>
+              </button>
+            </div>
+            <label class="flex items-center gap-2 text-xs text-slate-500 dark:text-neutral-400 cursor-pointer select-none pt-1">
+              <input type="checkbox" id="fillShapes" class="rounded bg-slate-100 dark:bg-neutral-900 border-lightBorder dark:border-darkBorder text-emerald-500 focus:ring-emerald-500/20"> Заповнювати фігури
+            </label>
+          </div>
+        </div>
+
+        <!-- Палітра -->
+        <div>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-neutral-400 mb-2.5">Палітра</h2>
+          <div class="grid grid-cols-8 gap-1.5" id="palette" role="group" aria-label="Стандартні кольори"></div>
+        </div>
+
+        <!-- Вибір довільного кольору -->
+        <div>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-neutral-400 mb-2.5">Колір</h2>
+          <div class="flex gap-2 mb-3">
+            <input type="color" id="colorInput" value="#000000" class="w-12 h-10 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded-xl cursor-pointer p-1" aria-label="Вибір кольору">
+            <input type="text" id="hexInput" value="#000000" maxlength="7" spellcheck="false" class="flex-1 bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded-xl px-3 text-xs font-mono text-slate-800 dark:text-white focus:border-emerald-500/50" aria-label="HEX-код кольору">
+          </div>
+          <div class="grid grid-cols-[16px_1fr_48px] gap-2 items-center text-xs font-mono">
+            <label for="rS" class="text-rose-500 font-bold">R</label><input type="range" id="rS" min="0" max="255" value="0" class="accent-rose-500"><input type="number" id="rN" min="0" max="255" value="0" class="bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded-lg p-1 text-center text-slate-800 dark:text-white text-xs">
+            <label for="gS" class="text-emerald-500 font-bold">G</label><input type="range" id="gS" min="0" max="255" value="0" class="accent-emerald-500"><input type="number" id="gN" min="0" max="255" value="0" class="bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded-lg p-1 text-center text-slate-800 dark:text-white text-xs">
+            <label for="bS" class="text-sky-500 font-bold">B</label><input type="range" id="bS" min="0" max="255" value="0" class="accent-sky-500"><input type="number" id="bN" min="0" max="255" value="0" class="bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded-lg p-1 text-center text-slate-800 dark:text-white text-xs">
+          </div>
+        </div>
+
+        <!-- Збереження та опції -->
+        <div class="pt-2 border-t border-lightBorder dark:border-darkBorder space-y-3">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-neutral-400">Експорт</h2>
+          <select id="exportSize" class="w-full bg-slate-100 dark:bg-neutral-900 border border-lightBorder dark:border-darkBorder rounded-xl p-2.5 text-xs text-slate-800 dark:text-neutral-200 focus:border-emerald-500/50" aria-label="Розмір PNG-файлу">
+            <option value="0">Справжній розмір (1:1 піксель)</option>
+            <option value="512">512 × 512</option>
+            <option value="1024" selected>1024 × 1024</option>
+            <option value="2048">2048 × 2048</option>
+          </select>
+          <div class="space-y-2 text-xs text-slate-500 dark:text-neutral-400">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" id="transparent" checked class="rounded bg-slate-100 dark:bg-neutral-900 border-lightBorder dark:border-darkBorder text-emerald-500 focus:ring-emerald-500/20"> Прозорий фон у файлі
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" id="gridToggle" checked class="rounded bg-slate-100 dark:bg-neutral-900 border-lightBorder dark:border-darkBorder text-emerald-500 focus:ring-emerald-500/20"> Показувати сітку
+            </label>
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition shadow-lg shadow-emerald-600/20" id="saveBtn">Зберегти PNG</button>
+            <button class="w-full py-2.5 px-4 bg-slate-100 hover:bg-rose-500/10 hover:border-rose-500/40 hover:text-rose-500 dark:bg-neutral-900 dark:hover:bg-rose-500/10 dark:hover:border-rose-500/40 dark:hover:text-rose-400 border border-lightBorder dark:border-darkBorder text-slate-700 dark:text-neutral-300 font-semibold rounded-xl text-xs transition" id="clearBtn">Очистити</button>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Основна зона полотна -->
+    <main class="flex flex-col items-center justify-center">
+      <div class="w-full max-w-[640px] aspect-square bg-lightCard/60 dark:bg-neutral-900/50 border border-lightBorder dark:border-darkBorder rounded-2xl p-4 shadow-2xl shadow-slate-300/50 dark:shadow-black/80 backdrop-blur-sm flex items-center justify-center relative group transition-colors duration-300">
+        <div class="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 via-transparent to-sky-500/5 rounded-2xl pointer-events-none"></div>
+        <div class="w-full h-full border border-lightBorder dark:border-darkBorder rounded-xl overflow-hidden bg-white dark:bg-black/40 shadow-inner relative z-10 transition-colors duration-300">
+          <canvas id="canvas" width="640" height="640" aria-label="Полотно для малювання"></canvas>
+        </div>
+      </div>
+      <p class="text-xs text-slate-400 dark:text-neutral-500 mt-3 text-center">Використовуйте панель ліворуч для вибору інструментів та кольорів</p>
+    </main>
+
+  </div>
 
 <script>
 (() => {
@@ -318,40 +254,90 @@
   let showGrid = true;
   let undoStack = [], redoStack = [];
   let drawing = false, lastCell = null, strokeChanged = false;
-  let preview = [];            // клітинки попереднього перегляду фігури
-  let polyPoints = [];         // вершини багатокутника
+  let preview = [];
+  let polyPoints = [];
   let shapeStart = null, shapeEnd = null, shapeShift = false;
   const SHAPES = ['line', 'rect', 'triangle', 'circle'];
+
+  /* ---------- Тема (Light / Dark) ---------- */
+  function isDarkTheme() {
+    return document.documentElement.classList.contains('dark');
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem('pixel-editor-theme');
+    if (saved) {
+      if (saved === 'dark') document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+    } else {
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }
+
+  $('themeBtn').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+    localStorage.setItem('pixel-editor-theme', isDarkTheme() ? 'dark' : 'light');
+    render();
+  });
+
+  /* ---------- Згортання фігур ---------- */
+  const toggleShapesBtn = $('toggleShapesBtn');
+  const shapesContainer = $('shapesContainer');
+  const shapesArrow = $('shapesArrow');
+
+  toggleShapesBtn.addEventListener('click', () => {
+    const isHidden = shapesContainer.classList.contains('hidden');
+    if (isHidden) {
+      shapesContainer.classList.remove('hidden');
+      shapesArrow.textContent = '▼';
+      shapesArrow.style.transform = 'rotate(0deg)';
+    } else {
+      shapesContainer.classList.add('hidden');
+      shapesArrow.textContent = '▶';
+    }
+  });
 
   /* ---------- Малювання на екрані ---------- */
   function render() {
     const cell = CANVAS_PX / size;
+    const isDark = isDarkTheme();
     ctx.clearRect(0, 0, CANVAS_PX, CANVAS_PX);
+
+    const bgChecker1 = isDark ? '#161616' : '#ffffff';
+    const bgChecker2 = isDark ? '#111111' : '#f1f5f9';
+
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
         const c = pixels[y * size + x];
         if (c) {
           ctx.fillStyle = c;
         } else {
-          ctx.fillStyle = (x + y) % 2 ? '#e9ecf5' : '#ffffff';
+          ctx.fillStyle = (x + y) % 2 ? bgChecker1 : bgChecker2;
         }
         ctx.fillRect(x * cell, y * cell, cell, cell);
       }
     }
+
     if (preview.length) {
       ctx.fillStyle = color;
       for (const p of preview) {
         if (p.x >= 0 && p.y >= 0 && p.x < size && p.y < size) ctx.fillRect(p.x * cell, p.y * cell, cell, cell);
       }
     }
+
     if (polyPoints.length) {
       const f = polyPoints[0];
-      ctx.strokeStyle = '#ff2d6f';
+      ctx.strokeStyle = '#22c55e';
       ctx.lineWidth = 2;
       ctx.strokeRect(f.x * cell + 1, f.y * cell + 1, cell - 2, cell - 2);
     }
+
     if (showGrid) {
-      ctx.strokeStyle = 'rgba(60,70,110,.28)';
+      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (let i = 1; i < size; i++) {
@@ -442,7 +428,6 @@
   }
 
   function shapeCells(kind, a, b, fill, free) {
-    // квадрат і коло за замовчуванням рівні; Shift розтягує їх
     if ((kind === 'rect' || kind === 'circle') && !free) {
       const dx = b.x - a.x, dy = b.y - a.y;
       const s = Math.max(Math.abs(dx), Math.abs(dy));
@@ -519,7 +504,6 @@
     if (pixels[i] !== value) { pixels[i] = value; strokeChanged = true; }
   }
 
-  // Лінія між двома клітинками, щоб не було «дірок» при швидкому русі
   function line(a, b, value) {
     let x0 = a.x, y0 = a.y; const x1 = b.x, y1 = b.y;
     const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
@@ -584,7 +568,6 @@
       render();
       return;
     }
-    // пензлик / гумка
     canvas.setPointerCapture(e.pointerId);
     pushHistory();
     drawing = true; strokeChanged = false; lastCell = c;
@@ -627,13 +610,11 @@
       return;
     }
     drawing = false;
-    // якщо нічого не змінилось — прибираємо порожній крок історії
     if (!strokeChanged) { undoStack.pop(); updateButtons(); }
   }
   canvas.addEventListener('pointerup', endStroke);
   canvas.addEventListener('pointercancel', endStroke);
 
-  /* ---------- Колір ---------- */
   const hex2 = n => n.toString(16).padStart(2, '0');
   const toHex = (r, g, b) => '#' + hex2(r) + hex2(g) + hex2(b);
   function parseHex(h) {
@@ -662,7 +643,7 @@
     const box = $('palette');
     PRESETS.forEach(c => {
       const b = document.createElement('button');
-      b.className = 'sw';
+      b.className = 'sw aspect-square rounded-lg border border-lightBorder dark:border-darkBorder transition-all hover:scale-105 shadow-sm';
       b.style.background = c;
       b.dataset.color = c;
       b.title = c;
@@ -692,14 +673,13 @@
     $(k + 'N').addEventListener('input', fromInput);
   });
 
-  /* ---------- Вибір інструмента та розміру ---------- */
   function setTool(t) {
     if (t !== tool) { resetShapes(); render(); }
     tool = t;
-    document.querySelectorAll('.tools .chip').forEach(b =>
+    document.querySelectorAll('.tools button').forEach(b =>
       b.setAttribute('aria-pressed', b.dataset.tool === t));
   }
-  document.querySelectorAll('.tools .chip').forEach(b =>
+  document.querySelectorAll('.tools button').forEach(b =>
     b.addEventListener('click', () => setTool(b.dataset.tool)));
   $('fillShapes').addEventListener('change', () => {
     if (tool === 'polygon' && polyPoints.length) { updatePolyPreview(polyPoints[polyPoints.length - 1]); render(); }
@@ -714,15 +694,14 @@
     pixels = new Array(size * size).fill(null);
     undoStack = []; redoStack = [];
     resetShapes();
-    document.querySelectorAll('#sizes .chip').forEach(b =>
+    document.querySelectorAll('#sizes button').forEach(b =>
       b.setAttribute('aria-pressed', +b.dataset.size === size));
     $('info').textContent = size + '×' + size;
     render(); updateButtons();
   }
-  document.querySelectorAll('#sizes .chip').forEach(b =>
+  document.querySelectorAll('#sizes button').forEach(b =>
     b.addEventListener('click', () => setSize(+b.dataset.size)));
 
-  /* ---------- Кнопки ---------- */
   $('undoBtn').addEventListener('click', undo);
   $('redoBtn').addEventListener('click', redo);
   $('clearBtn').addEventListener('click', () => {
@@ -741,7 +720,7 @@
     const o = out.getContext('2d');
     o.imageSmoothingEnabled = false;
     if (!$('transparent').checked) {
-      o.fillStyle = '#ffffff';
+      o.fillStyle = isDarkTheme() ? '#121212' : '#ffffff';
       o.fillRect(0, 0, out.width, out.height);
     }
     for (let y = 0; y < size; y++) {
@@ -761,68 +740,18 @@
     }, 'image/png');
   });
 
-  /* ---------- Клавіші ---------- */
-  document.addEventListener('keydown', e => {
-    if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) &&
-        document.activeElement.type !== 'checkbox' && document.activeElement.type !== 'range') return;
-    const k = e.key.toLowerCase();
-    if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
-    if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (tool === 'polygon' && polyPoints.length) {
-      if (e.key === 'Enter') { e.preventDefault(); finishPolygon(); return; }
-      if (e.key === 'Escape') { resetShapes(); render(); return; }
-    }
-    if (k === 'l' || k === 'д') setTool('line');
-    else if (k === 'r' || k === 'к') setTool('rect');
-    else if (k === 't' || k === 'е') setTool('triangle');
-    else if (k === 'o' || k === 'щ') setTool('circle');
-    else if (k === 'p' || k === 'з') setTool('polygon');
-    else if (k === 'b' || k === 'и') setTool('pen');
-    else if (k === 'e' || k === 'у') setTool('eraser');
-    else if (k === 'g' || k === 'п') setTool('fill');
-    else if (k === 'i' || k === 'ш') setTool('pick');
+  // Підказки
+  const infoBtn = $('infoBtn');
+  const helpBox = $('helpBox');
+  infoBtn.addEventListener('click', () => {
+    const expanded = infoBtn.getAttribute('aria-expanded') === 'true';
+    infoBtn.setAttribute('aria-expanded', !expanded);
+    helpBox.hidden = expanded;
   });
 
-  /* ---------- Підказки ---------- */
-  const helpBox = $('helpBox'), infoBtn = $('infoBtn');
-  function toggleHelp(open) {
-    helpBox.hidden = !open;
-    infoBtn.setAttribute('aria-expanded', open);
-  }
-  infoBtn.addEventListener('click', () => toggleHelp(helpBox.hidden));
-  document.addEventListener('pointerdown', e => {
-    if (!helpBox.hidden && !helpBox.contains(e.target) && !infoBtn.contains(e.target)) toggleHelp(false);
-  });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !helpBox.hidden) { toggleHelp(false); infoBtn.focus(); }
-  });
-
-  /* ---------- Тема ---------- */
-  const root = document.documentElement;
-  const media = window.matchMedia('(prefers-color-scheme: dark)');
-  let saved = null;
-  try { saved = localStorage.getItem('pixel-theme'); } catch (e) {}
-
-  function applyTheme(choice) {
-    if (choice === 'light' || choice === 'dark') root.setAttribute('data-theme', choice);
-    else root.removeAttribute('data-theme');
-    const mode = (choice === 'light' || choice === 'dark') ? choice : (media.matches ? 'dark' : 'light');
-    root.setAttribute('data-mode', mode);
-    $('themeBtn').title = mode === 'dark' ? 'Увімкнути світлу тему' : 'Увімкнути темну тему';
-  }
-  $('themeBtn').addEventListener('click', () => {
-    const next = root.getAttribute('data-mode') === 'dark' ? 'light' : 'dark';
-    try { localStorage.setItem('pixel-theme', next); } catch (e) {}
-    saved = next;
-    applyTheme(next);
-  });
-  media.addEventListener('change', () => { if (!saved) applyTheme(null); });
-  applyTheme(saved);
-
-  /* ---------- Старт ---------- */
+  // Ініціалізація
+  initTheme();
   buildPalette();
-  setColor('#000000');
   render();
   updateButtons();
 })();
