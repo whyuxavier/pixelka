@@ -73,6 +73,28 @@
   .theme .moon { display: none; }
   :root[data-mode="light"] .theme .sun { display: none; }
   :root[data-mode="light"] .theme .moon { display: block; }
+  .topbar { position: relative; }
+  .infoBtn { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700; font-size: 20px; }
+  .infoBtn[aria-expanded="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .help {
+    position: absolute; top: calc(100% + 10px); right: 0; z-index: 5;
+    width: min(400px, 100%);
+    background: var(--panel); color: var(--ink);
+    border: 2px solid var(--ink); border-radius: var(--radius);
+    padding: 16px 18px; box-shadow: 6px 6px 0 var(--line);
+  }
+  .help[hidden] { display: none; }
+  .help h3 { margin: 0 0 6px; font-size: 15px; }
+  .help h3:not(:first-child) { margin-top: 14px; }
+  .help p { margin: 0 0 8px; font-size: 14px; line-height: 1.5; color: var(--muted); }
+  .keys { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin: 0; }
+  .keys div { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .keys dt {
+    min-width: 28px; padding: 2px 6px; text-align: center; font-weight: 700;
+    font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+    background: var(--bg); border: 2px solid var(--line); border-radius: 6px;
+  }
+  .keys dd { margin: 0; }
   h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: .5px; }
   .sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
   h2 { font-size: 15px; margin: 18px 0 8px; color: var(--muted); font-weight: 700; }
@@ -244,14 +266,33 @@
       <button class="btn" id="redoBtn" title="Крок уперед (Ctrl+Y)">↷ Вперед</button>
       <span class="spacer"></span>
       <span class="info" id="info">16×16</span>
+      <button class="theme infoBtn" id="infoBtn" type="button" title="Підказки" aria-label="Підказки" aria-expanded="false" aria-controls="helpBox">i</button>
       <button class="theme" id="themeBtn" type="button" title="Змінити тему" aria-label="Змінити тему">
         <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.900 4.900l1.400 1.400M17.700 17.700l1.400 1.400M4.900 19.100l1.400-1.400M17.700 6.300l1.400-1.400"/></svg>
         <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.500A8 8 0 019.500 4 8 8 0 1020 14.500z"/></svg>
       </button>
+      <div class="help" id="helpBox" role="dialog" aria-label="Підказки" hidden>
+        <h3>Фігури</h3>
+        <p>Лінію, квадрат, трикутник і коло малюй протягуванням. Квадрат і коло виходять рівними, а щоб розтягнути їх у прямокутник чи овал, тримай Shift.</p>
+        <p>Багатокутник будується кліками по точках. Закінчи його кліком по першій точці, подвійним кліком або клавішею Enter, а Esc скасує побудову.</p>
+        <h3>Гарячі клавіші</h3>
+        <dl class="keys">
+          <div><dt>B</dt><dd>Пензлик</dd></div>
+          <div><dt>E</dt><dd>Гумка</dd></div>
+          <div><dt>G</dt><dd>Заливка</dd></div>
+          <div><dt>I</dt><dd>Піпетка</dd></div>
+          <div><dt>L</dt><dd>Лінія</dd></div>
+          <div><dt>R</dt><dd>Квадрат</dd></div>
+          <div><dt>T</dt><dd>Трикутник</dd></div>
+          <div><dt>O</dt><dd>Коло</dd></div>
+          <div><dt>P</dt><dd>Багатокутник</dd></div>
+          <div><dt>Ctrl + Z</dt><dd>Крок назад</dd></div>
+          <div><dt>Ctrl + Y</dt><dd>Крок уперед</dd></div>
+        </dl>
+      </div>
     </div>
     <div class="board"><canvas id="canvas" width="640" height="640" aria-label="Полотно для малювання"></canvas></div>
-    <p class="hint">Фігури малюються протягуванням. Квадрат і коло рівні, а з Shift розтягуються. Багатокутник: клікай по точках, закінчи кліком по першій точці, подвійним кліком або Enter, Esc — скасувати.</p>
-    <p class="hint">Клавіші: B пензлик, E гумка, G заливка, I піпетка, L лінія, R квадрат, T трикутник, O коло, P багатокутник, Ctrl+Z / Ctrl+Y назад і вперед.</p>
+
   </main>
 
 </div>
@@ -740,6 +781,20 @@
     else if (k === 'e' || k === 'у') setTool('eraser');
     else if (k === 'g' || k === 'п') setTool('fill');
     else if (k === 'i' || k === 'ш') setTool('pick');
+  });
+
+  /* ---------- Підказки ---------- */
+  const helpBox = $('helpBox'), infoBtn = $('infoBtn');
+  function toggleHelp(open) {
+    helpBox.hidden = !open;
+    infoBtn.setAttribute('aria-expanded', open);
+  }
+  infoBtn.addEventListener('click', () => toggleHelp(helpBox.hidden));
+  document.addEventListener('pointerdown', e => {
+    if (!helpBox.hidden && !helpBox.contains(e.target) && !infoBtn.contains(e.target)) toggleHelp(false);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !helpBox.hidden) { toggleHelp(false); infoBtn.focus(); }
   });
 
   /* ---------- Тема ---------- */
