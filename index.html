@@ -17,8 +17,10 @@
     --ok: #12a266;
     --radius: 14px;
   }
+  :root { color-scheme: light; }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
       --bg: #12162a;
       --panel: #1c2240;
       --ink: #eef0fb;
@@ -27,6 +29,16 @@
       --accent: #6f86ff;
       --accent-ink: #0d1230;
     }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #12162a;
+    --panel: #1c2240;
+    --ink: #eef0fb;
+    --muted: #9aa3c7;
+    --line: #313a66;
+    --accent: #6f86ff;
+    --accent-ink: #0d1230;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
@@ -51,6 +63,16 @@
     border-radius: var(--radius);
     padding: 18px;
   }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .theme {
+    flex: none; width: 42px; height: 42px; padding: 0;
+    display: grid; place-items: center;
+    background: var(--bg); border: 2px solid var(--line); border-radius: 12px;
+  }
+  .theme svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .theme .moon { display: none; }
+  :root[data-mode="light"] .theme .sun { display: none; }
+  :root[data-mode="light"] .theme .moon { display: block; }
   h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: .5px; }
   .sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
   h2 { font-size: 15px; margin: 18px 0 8px; color: var(--muted); font-weight: 700; }
@@ -77,6 +99,7 @@
     border-color: var(--accent);
   }
   .tools .chip { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; padding: 10px 4px; }
+  #shapes .chip { flex: 1 1 28%; }
   .tools svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
   .palette { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
@@ -170,6 +193,21 @@
         <svg viewBox="0 0 24 24"><path d="M14 6l4 4"/><path d="M16 4a2 2 0 013 3l-2 2-3-3z"/><path d="M14 8l-9 9v3h3l9-9"/></svg>Піпетка</button>
     </div>
 
+    <h2>Фігури</h2>
+    <div class="row tools" id="shapes" role="group" aria-label="Фігури">
+      <button class="chip" data-tool="line" aria-pressed="false" title="Лінія (L)">
+        <svg viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg>Лінія</button>
+      <button class="chip" data-tool="rect" aria-pressed="false" title="Квадрат (R)">
+        <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></svg>Квадрат</button>
+      <button class="chip" data-tool="triangle" aria-pressed="false" title="Трикутник (T)">
+        <svg viewBox="0 0 24 24"><path d="M12 5l8 14H4z"/></svg>Трикутник</button>
+      <button class="chip" data-tool="circle" aria-pressed="false" title="Коло (O)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg>Коло</button>
+      <button class="chip" data-tool="polygon" aria-pressed="false" title="Багатокутник (P)">
+        <svg viewBox="0 0 24 24"><path d="M12 4l8 6-3 10H7L4 10z"/></svg>Багатокутник</button>
+    </div>
+    <label class="check"><input type="checkbox" id="fillShapes"> Заповнювати фігури</label>
+
     <h2>Палітра</h2>
     <div class="palette" id="palette" role="group" aria-label="Стандартні кольори"></div>
 
@@ -206,9 +244,14 @@
       <button class="btn" id="redoBtn" title="Крок уперед (Ctrl+Y)">↷ Вперед</button>
       <span class="spacer"></span>
       <span class="info" id="info">16×16</span>
+      <button class="theme" id="themeBtn" type="button" title="Змінити тему" aria-label="Змінити тему">
+        <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.900 4.900l1.400 1.400M17.700 17.700l1.400 1.400M4.900 19.100l1.400-1.400M17.700 6.300l1.400-1.400"/></svg>
+        <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.500A8 8 0 019.500 4 8 8 0 1020 14.500z"/></svg>
+      </button>
     </div>
     <div class="board"><canvas id="canvas" width="640" height="640" aria-label="Полотно для малювання"></canvas></div>
-    <p class="hint">Гарячі клавіші: B — пензлик, E — гумка, G — заливка, I — піпетка, Ctrl+Z / Ctrl+Y — назад / вперед.</p>
+    <p class="hint">Фігури малюються протягуванням. Квадрат і коло рівні, а з Shift розтягуються. Багатокутник: клікай по точках, закінчи кліком по першій точці, подвійним кліком або Enter, Esc — скасувати.</p>
+    <p class="hint">Клавіші: B пензлик, E гумка, G заливка, I піпетка, L лінія, R квадрат, T трикутник, O коло, P багатокутник, Ctrl+Z / Ctrl+Y назад і вперед.</p>
   </main>
 
 </div>
@@ -233,6 +276,10 @@
   let showGrid = true;
   let undoStack = [], redoStack = [];
   let drawing = false, lastCell = null, strokeChanged = false;
+  let preview = [];            // клітинки попереднього перегляду фігури
+  let polyPoints = [];         // вершини багатокутника
+  let shapeStart = null, shapeEnd = null, shapeShift = false;
+  const SHAPES = ['line', 'rect', 'triangle', 'circle'];
 
   /* ---------- Малювання на екрані ---------- */
   function render() {
@@ -248,6 +295,18 @@
         }
         ctx.fillRect(x * cell, y * cell, cell, cell);
       }
+    }
+    if (preview.length) {
+      ctx.fillStyle = color;
+      for (const p of preview) {
+        if (p.x >= 0 && p.y >= 0 && p.x < size && p.y < size) ctx.fillRect(p.x * cell, p.y * cell, cell, cell);
+      }
+    }
+    if (polyPoints.length) {
+      const f = polyPoints[0];
+      ctx.strokeStyle = '#ff2d6f';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(f.x * cell + 1, f.y * cell + 1, cell - 2, cell - 2);
     }
     if (showGrid) {
       ctx.strokeStyle = 'rgba(60,70,110,.28)';
@@ -287,12 +346,130 @@
   }
 
   /* ---------- Інструменти ---------- */
-  function cellFromEvent(e) {
+  function cellFromEvent(e, clamp) {
     const r = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - r.left) / r.width * size);
-    const y = Math.floor((e.clientY - r.top) / r.height * size);
-    if (x < 0 || y < 0 || x >= size || y >= size) return null;
+    let x = Math.floor((e.clientX - r.left) / r.width * size);
+    let y = Math.floor((e.clientY - r.top) / r.height * size);
+    if (clamp) {
+      x = Math.max(0, Math.min(size - 1, x));
+      y = Math.max(0, Math.min(size - 1, y));
+    } else if (x < 0 || y < 0 || x >= size || y >= size) return null;
     return { x, y };
+  }
+
+  /* ---------- Геометрія фігур ---------- */
+  function lineCells(a, b) {
+    const out = [];
+    let x0 = a.x, y0 = a.y;
+    const dx = Math.abs(b.x - x0), dy = Math.abs(b.y - y0);
+    const sx = x0 < b.x ? 1 : -1, sy = y0 < b.y ? 1 : -1;
+    let err = dx - dy;
+    while (true) {
+      out.push({ x: x0, y: y0 });
+      if (x0 === b.x && y0 === b.y) break;
+      const e2 = 2 * err;
+      if (e2 > -dy) { err -= dy; x0 += sx; }
+      if (e2 < dx) { err += dx; y0 += sy; }
+    }
+    return out;
+  }
+
+  function pointInPoly(px, py, pts) {
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const xi = pts[i].x, yi = pts[i].y, xj = pts[j].x, yj = pts[j].y;
+      if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+
+  function polyCells(pts, closed, fill) {
+    let out = [];
+    if (pts.length === 1) return [pts[0]];
+    for (let i = 0; i < pts.length - 1; i++) out = out.concat(lineCells(pts[i], pts[i + 1]));
+    if (closed && pts.length >= 3) out = out.concat(lineCells(pts[pts.length - 1], pts[0]));
+    if (fill && pts.length >= 3) {
+      const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+      for (let y = Math.min(...ys); y <= Math.max(...ys); y++) {
+        for (let x = Math.min(...xs); x <= Math.max(...xs); x++) {
+          if (pointInPoly(x, y, pts)) out.push({ x, y });
+        }
+      }
+    }
+    return out;
+  }
+
+  function shapeCells(kind, a, b, fill, free) {
+    // квадрат і коло за замовчуванням рівні; Shift розтягує їх
+    if ((kind === 'rect' || kind === 'circle') && !free) {
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const s = Math.max(Math.abs(dx), Math.abs(dy));
+      b = { x: a.x + (dx < 0 ? -s : s), y: a.y + (dy < 0 ? -s : s) };
+    }
+    const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+    const y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+    const out = [];
+
+    if (kind === 'line') return lineCells(a, b);
+
+    if (kind === 'rect') {
+      for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++)
+          if (fill || x === x0 || x === x1 || y === y0 || y === y1) out.push({ x, y });
+      return out;
+    }
+
+    if (kind === 'triangle') {
+      const apex = { x: Math.round((x0 + x1) / 2), y: a.y };
+      return polyCells([apex, { x: x0, y: b.y }, { x: x1, y: b.y }], true, fill);
+    }
+
+    if (kind === 'circle') {
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      const rx = (x1 - x0) / 2 + 0.5, ry = (y1 - y0) / 2 + 0.5;
+      const inside = (x, y) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          if (!inside(x, y)) continue;
+          if (fill || !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)) out.push({ x, y });
+        }
+      }
+      return out;
+    }
+    return out;
+  }
+
+  const fillOn = () => $('fillShapes').checked;
+
+  function commitCells(cells) {
+    pushHistory();
+    strokeChanged = false;
+    for (const c of cells) {
+      if (c.x >= 0 && c.y >= 0 && c.x < size && c.y < size) setPixel(c.x, c.y, color);
+    }
+    if (!strokeChanged) { undoStack.pop(); updateButtons(); }
+    preview = [];
+    render();
+  }
+
+  function resetShapes() {
+    drawing = false; shapeStart = null; shapeEnd = null;
+    polyPoints = []; preview = [];
+  }
+
+  function updatePolyPreview(hover) {
+    if (!polyPoints.length) { preview = []; return; }
+    const pts = polyPoints.slice();
+    const last = pts[pts.length - 1];
+    if (hover && (hover.x !== last.x || hover.y !== last.y)) pts.push(hover);
+    preview = polyCells(pts, true, fillOn());
+  }
+
+  function finishPolygon() {
+    if (!polyPoints.length) return;
+    const cells = polyCells(polyPoints, true, fillOn());
+    polyPoints = [];
+    commitCells(cells);
   }
 
   function setPixel(x, y, value) {
@@ -347,6 +524,24 @@
       render();
       return;
     }
+    if (SHAPES.includes(tool)) {
+      canvas.setPointerCapture(e.pointerId);
+      drawing = true;
+      shapeStart = shapeEnd = c;
+      shapeShift = e.shiftKey;
+      preview = shapeCells(tool, c, c, fillOn(), shapeShift);
+      render();
+      return;
+    }
+    if (tool === 'polygon') {
+      const first = polyPoints[0], last = polyPoints[polyPoints.length - 1];
+      if (first && polyPoints.length >= 3 && c.x === first.x && c.y === first.y) { finishPolygon(); return; }
+      if (last && last.x === c.x && last.y === c.y) return;
+      polyPoints.push(c);
+      updatePolyPreview(c);
+      render();
+      return;
+    }
     // пензлик / гумка
     canvas.setPointerCapture(e.pointerId);
     pushHistory();
@@ -356,7 +551,19 @@
   });
 
   canvas.addEventListener('pointermove', e => {
+    if (tool === 'polygon' && polyPoints.length) {
+      updatePolyPreview(cellFromEvent(e, true));
+      render();
+      return;
+    }
     if (!drawing) return;
+    if (shapeStart) {
+      shapeEnd = cellFromEvent(e, true);
+      shapeShift = e.shiftKey;
+      preview = shapeCells(tool, shapeStart, shapeEnd, fillOn(), shapeShift);
+      render();
+      return;
+    }
     const c = cellFromEvent(e);
     if (!c) return;
     line(lastCell, c, tool === 'eraser' ? null : color);
@@ -364,8 +571,19 @@
     render();
   });
 
-  function endStroke() {
+  canvas.addEventListener('dblclick', () => {
+    if (tool === 'polygon') finishPolygon();
+  });
+
+  function endStroke(e) {
     if (!drawing) return;
+    if (shapeStart) {
+      const end = (e && e.type === 'pointerup') ? (cellFromEvent(e, true) || shapeEnd) : null;
+      const cells = end ? shapeCells(tool, shapeStart, end, fillOn(), e.shiftKey) : [];
+      resetShapes();
+      if (cells.length) commitCells(cells); else render();
+      return;
+    }
     drawing = false;
     // якщо нічого не змінилось — прибираємо порожній крок історії
     if (!strokeChanged) { undoStack.pop(); updateButtons(); }
@@ -434,12 +652,16 @@
 
   /* ---------- Вибір інструмента та розміру ---------- */
   function setTool(t) {
+    if (t !== tool) { resetShapes(); render(); }
     tool = t;
-    document.querySelectorAll('#tools .chip').forEach(b =>
+    document.querySelectorAll('.tools .chip').forEach(b =>
       b.setAttribute('aria-pressed', b.dataset.tool === t));
   }
-  document.querySelectorAll('#tools .chip').forEach(b =>
+  document.querySelectorAll('.tools .chip').forEach(b =>
     b.addEventListener('click', () => setTool(b.dataset.tool)));
+  $('fillShapes').addEventListener('change', () => {
+    if (tool === 'polygon' && polyPoints.length) { updatePolyPreview(polyPoints[polyPoints.length - 1]); render(); }
+  });
 
   function isEmpty() { return pixels.every(p => p === null); }
 
@@ -449,6 +671,7 @@
     size = n;
     pixels = new Array(size * size).fill(null);
     undoStack = []; redoStack = [];
+    resetShapes();
     document.querySelectorAll('#sizes .chip').forEach(b =>
       b.setAttribute('aria-pressed', +b.dataset.size === size));
     $('info').textContent = size + '×' + size;
@@ -504,11 +727,42 @@
     if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (k === 'b' || k === 'и') setTool('pen');
+    if (tool === 'polygon' && polyPoints.length) {
+      if (e.key === 'Enter') { e.preventDefault(); finishPolygon(); return; }
+      if (e.key === 'Escape') { resetShapes(); render(); return; }
+    }
+    if (k === 'l' || k === 'д') setTool('line');
+    else if (k === 'r' || k === 'к') setTool('rect');
+    else if (k === 't' || k === 'е') setTool('triangle');
+    else if (k === 'o' || k === 'щ') setTool('circle');
+    else if (k === 'p' || k === 'з') setTool('polygon');
+    else if (k === 'b' || k === 'и') setTool('pen');
     else if (k === 'e' || k === 'у') setTool('eraser');
     else if (k === 'g' || k === 'п') setTool('fill');
     else if (k === 'i' || k === 'ш') setTool('pick');
   });
+
+  /* ---------- Тема ---------- */
+  const root = document.documentElement;
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  let saved = null;
+  try { saved = localStorage.getItem('pixel-theme'); } catch (e) {}
+
+  function applyTheme(choice) {
+    if (choice === 'light' || choice === 'dark') root.setAttribute('data-theme', choice);
+    else root.removeAttribute('data-theme');
+    const mode = (choice === 'light' || choice === 'dark') ? choice : (media.matches ? 'dark' : 'light');
+    root.setAttribute('data-mode', mode);
+    $('themeBtn').title = mode === 'dark' ? 'Увімкнути світлу тему' : 'Увімкнути темну тему';
+  }
+  $('themeBtn').addEventListener('click', () => {
+    const next = root.getAttribute('data-mode') === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('pixel-theme', next); } catch (e) {}
+    saved = next;
+    applyTheme(next);
+  });
+  media.addEventListener('change', () => { if (!saved) applyTheme(null); });
+  applyTheme(saved);
 
   /* ---------- Старт ---------- */
   buildPalette();
