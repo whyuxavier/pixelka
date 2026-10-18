@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Піксель-редактор</title>
+<style>
+  :root {
+    --bg: #eef1f8;
+    --panel: #ffffff;
+    --ink: #1b2340;
+    --muted: #5d6685;
+    --line: #d5dbec;
+    --accent: #3b5bff;
+    --accent-ink: #ffffff;
+    --danger: #e5384f;
+    --ok: #12a266;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12162a;
+      --panel: #1c2240;
+      --ink: #eef0fb;
+      --muted: #9aa3c7;
+      --line: #313a66;
+      --accent: #6f86ff;
+      --accent-ink: #0d1230;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .app {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 330px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .panel {
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: .5px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+  h2 { font-size: 15px; margin: 18px 0 8px; color: var(--muted); font-weight: 700; }
+  h2:first-of-type { margin-top: 0; }
+
+  button, select, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    flex: 1 1 0;
+    min-width: 56px;
+    padding: 9px 6px;
+    background: var(--bg);
+    border: 2px solid var(--line);
+    border-radius: 10px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+  }
+  .tools .chip { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; padding: 10px 4px; }
+  .tools svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .palette { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+  .sw {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 2px solid var(--line);
+    padding: 0;
+  }
+  .sw[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 1px; }
+
+  .picker { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .picker input[type="color"] {
+    width: 56px; height: 44px; padding: 0; border: 2px solid var(--line);
+    border-radius: 10px; background: none; cursor: pointer;
+  }
+  .picker input[type="text"] {
+    flex: 1; min-width: 0; padding: 10px; border: 2px solid var(--line);
+    border-radius: 10px; background: var(--bg); font-family: ui-monospace, Consolas, monospace;
+  }
+  .rgb { display: grid; grid-template-columns: 18px 1fr 52px; gap: 6px 8px; align-items: center; }
+  .rgb label { font-weight: 700; }
+  .rgb input[type="range"] { width: 100%; }
+  .rgb input[type="number"] {
+    width: 100%; padding: 4px; border: 2px solid var(--line);
+    border-radius: 8px; background: var(--bg);
+  }
+  #rS { accent-color: #e5384f; } #gS { accent-color: #12a266; } #bS { accent-color: #3b5bff; }
+
+  .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; }
+  select {
+    width: 100%; padding: 10px; border: 2px solid var(--line);
+    border-radius: 10px; background: var(--bg);
+  }
+  .actions { display: grid; gap: 8px; margin-top: 18px; }
+  .btn {
+    padding: 12px; border: 0; border-radius: 12px; font-weight: 700;
+    background: var(--bg); border: 2px solid var(--line);
+  }
+  .btn.save { background: var(--ok); border-color: var(--ok); color: #fff; font-size: 16px; }
+  .btn.clear { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  .stage { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  .topbar { display: flex; gap: 8px; width: 100%; max-width: 640px; align-items: center; }
+  .topbar .spacer { flex: 1; }
+  .topbar .btn { padding: 8px 14px; }
+  .info { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .board {
+    width: 100%; max-width: 640px; aspect-ratio: 1;
+    border: 2px solid var(--ink); border-radius: 6px;
+    background: #fff; overflow: hidden;
+    box-shadow: 8px 8px 0 var(--line);
+  }
+  canvas {
+    display: block; width: 100%; height: 100%;
+    image-rendering: pixelated; touch-action: none; cursor: crosshair;
+  }
+  .hint { color: var(--muted); font-size: 13px; text-align: center; max-width: 640px; }
+
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; }
+    .stage { order: -1; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="panel" aria-label="Панель інструментів">
+    <h1>Піксель-редактор</h1>
+    <p class="sub">Малюй піксельні картинки та зберігай їх у PNG.</p>
+
+    <h2>Розмір полотна</h2>
+    <div class="row" id="sizes" role="group" aria-label="Розмір полотна">
+      <button class="chip" data-size="8" aria-pressed="false">8×8</button>
+      <button class="chip" data-size="16" aria-pressed="true">16×16</button>
+      <button class="chip" data-size="32" aria-pressed="false">32×32</button>
+      <button class="chip" data-size="64" aria-pressed="false">64×64</button>
+    </div>
+
+    <h2>Інструменти</h2>
+    <div class="row tools" id="tools" role="group" aria-label="Інструменти">
+      <button class="chip" data-tool="pen" aria-pressed="true" title="Пензлик (B)">
+        <svg viewBox="0 0 24 24"><path d="M4 20l1-4L16 5a2.1 2.1 0 013 3L8 19z"/><path d="M14 7l3 3"/></svg>Пензлик</button>
+      <button class="chip" data-tool="eraser" aria-pressed="false" title="Гумка (E)">
+        <svg viewBox="0 0 24 24"><path d="M7 20h13"/><path d="M5 15l9-9a2 2 0 013 0l2 2a2 2 0 010 3l-8 8H8z"/></svg>Гумка</button>
+      <button class="chip" data-tool="fill" aria-pressed="false" title="Заливка (G)">
+        <svg viewBox="0 0 24 24"><path d="M5 11l7-7 7 7-7 7z"/><path d="M20 16c0 1.5-1 2.5-1 2.5S18 17.500 18 16.500"/><path d="M3 20h18"/></svg>Заливка</button>
+      <button class="chip" data-tool="pick" aria-pressed="false" title="Піпетка (I)">
+        <svg viewBox="0 0 24 24"><path d="M14 6l4 4"/><path d="M16 4a2 2 0 013 3l-2 2-3-3z"/><path d="M14 8l-9 9v3h3l9-9"/></svg>Піпетка</button>
+    </div>
+
+    <h2>Палітра</h2>
+    <div class="palette" id="palette" role="group" aria-label="Стандартні кольори"></div>
+
+    <h2>Будь-який колір</h2>
+    <div class="picker">
+      <input type="color" id="colorInput" value="#000000" aria-label="Вибір кольору">
+      <input type="text" id="hexInput" value="#000000" maxlength="7" spellcheck="false" aria-label="HEX-код кольору">
+    </div>
+    <div class="rgb">
+      <label for="rS" style="color:#e5384f">R</label><input type="range" id="rS" min="0" max="255" value="0"><input type="number" id="rN" min="0" max="255" value="0">
+      <label for="gS" style="color:#12a266">G</label><input type="range" id="gS" min="0" max="255" value="0"><input type="number" id="gN" min="0" max="255" value="0">
+      <label for="bS" style="color:#3b5bff">B</label><input type="range" id="bS" min="0" max="255" value="0"><input type="number" id="bN" min="0" max="255" value="0">
+    </div>
+
+    <h2>Збереження</h2>
+    <select id="exportSize" aria-label="Розмір PNG-файлу">
+      <option value="0">Справжній розмір (1 піксель = 1 піксель)</option>
+      <option value="512">512 × 512</option>
+      <option value="1024" selected>1024 × 1024</option>
+      <option value="2048">2048 × 2048</option>
+    </select>
+    <label class="check"><input type="checkbox" id="transparent" checked> Прозорий фон у файлі</label>
+    <label class="check"><input type="checkbox" id="gridToggle" checked> Показувати сітку</label>
+
+    <div class="actions">
+      <button class="btn save" id="saveBtn">Зберегти PNG</button>
+      <button class="btn clear" id="clearBtn">Очистити</button>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <div class="topbar">
+      <button class="btn" id="undoBtn" title="Крок назад (Ctrl+Z)">↶ Назад</button>
+      <button class="btn" id="redoBtn" title="Крок уперед (Ctrl+Y)">↷ Вперед</button>
+      <span class="spacer"></span>
+      <span class="info" id="info">16×16</span>
+    </div>
+    <div class="board"><canvas id="canvas" width="640" height="640" aria-label="Полотно для малювання"></canvas></div>
+    <p class="hint">Гарячі клавіші: B — пензлик, E — гумка, G — заливка, I — піпетка, Ctrl+Z / Ctrl+Y — назад / вперед.</p>
+  </main>
+
+</div>
+
+<script>
+(() => {
+  const PRESETS = [
+    '#000000','#ffffff','#7f7f7f','#c3c3c3','#880015','#b97a57','#ed1c24','#ff7f27',
+    '#ffc90e','#fff200','#b5e61d','#22b14c','#00a2e8','#3f48cc','#a349a4','#ffaec9'
+  ];
+  const CANVAS_PX = 640;
+  const HISTORY_LIMIT = 100;
+
+  const $ = id => document.getElementById(id);
+  const canvas = $('canvas');
+  const ctx = canvas.getContext('2d');
+
+  let size = 16;
+  let pixels = new Array(size * size).fill(null);
+  let color = '#000000';
+  let tool = 'pen';
+  let showGrid = true;
+  let undoStack = [], redoStack = [];
+  let drawing = false, lastCell = null, strokeChanged = false;
+
+  /* ---------- Малювання на екрані ---------- */
+  function render() {
+    const cell = CANVAS_PX / size;
+    ctx.clearRect(0, 0, CANVAS_PX, CANVAS_PX);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const c = pixels[y * size + x];
+        if (c) {
+          ctx.fillStyle = c;
+        } else {
+          ctx.fillStyle = (x + y) % 2 ? '#e9ecf5' : '#ffffff';
+        }
+        ctx.fillRect(x * cell, y * cell, cell, cell);
+      }
+    }
+    if (showGrid) {
+      ctx.strokeStyle = 'rgba(60,70,110,.28)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 1; i < size; i++) {
+        const p = Math.round(i * cell) + .5;
+        ctx.moveTo(p, 0); ctx.lineTo(p, CANVAS_PX);
+        ctx.moveTo(0, p); ctx.lineTo(CANVAS_PX, p);
+      }
+      ctx.stroke();
+    }
+  }
+
+  /* ---------- Історія ---------- */
+  function pushHistory() {
+    undoStack.push(pixels.slice());
+    if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+    redoStack = [];
+    updateButtons();
+  }
+  function undo() {
+    if (!undoStack.length) return;
+    redoStack.push(pixels.slice());
+    pixels = undoStack.pop();
+    render(); updateButtons();
+  }
+  function redo() {
+    if (!redoStack.length) return;
+    undoStack.push(pixels.slice());
+    pixels = redoStack.pop();
+    render(); updateButtons();
+  }
+  function updateButtons() {
+    $('undoBtn').disabled = !undoStack.length;
+    $('redoBtn').disabled = !redoStack.length;
+  }
+
+  /* ---------- Інструменти ---------- */
+  function cellFromEvent(e) {
+    const r = canvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - r.left) / r.width * size);
+    const y = Math.floor((e.clientY - r.top) / r.height * size);
+    if (x < 0 || y < 0 || x >= size || y >= size) return null;
+    return { x, y };
+  }
+
+  function setPixel(x, y, value) {
+    const i = y * size + x;
+    if (pixels[i] !== value) { pixels[i] = value; strokeChanged = true; }
+  }
+
+  // Лінія між двома клітинками, щоб не було «дірок» при швидкому русі
+  function line(a, b, value) {
+    let x0 = a.x, y0 = a.y; const x1 = b.x, y1 = b.y;
+    const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+    let err = dx - dy;
+    while (true) {
+      setPixel(x0, y0, value);
+      if (x0 === x1 && y0 === y1) break;
+      const e2 = 2 * err;
+      if (e2 > -dy) { err -= dy; x0 += sx; }
+      if (e2 < dx) { err += dx; y0 += sy; }
+    }
+  }
+
+  function floodFill(x, y, value) {
+    const target = pixels[y * size + x];
+    if (target === value) return false;
+    const stack = [[x, y]];
+    while (stack.length) {
+      const [cx, cy] = stack.pop();
+      if (cx < 0 || cy < 0 || cx >= size || cy >= size) continue;
+      const i = cy * size + cx;
+      if (pixels[i] !== target) continue;
+      pixels[i] = value;
+      stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+    }
+    return true;
+  }
+
+  canvas.addEventListener('pointerdown', e => {
+    if (e.button !== undefined && e.button !== 0) return;
+    const c = cellFromEvent(e);
+    if (!c) return;
+    e.preventDefault();
+
+    if (tool === 'pick') {
+      const picked = pixels[c.y * size + c.x];
+      if (picked) setColor(picked);
+      return;
+    }
+    if (tool === 'fill') {
+      pushHistory();
+      floodFill(c.x, c.y, color);
+      render();
+      return;
+    }
+    // пензлик / гумка
+    canvas.setPointerCapture(e.pointerId);
+    pushHistory();
+    drawing = true; strokeChanged = false; lastCell = c;
+    line(c, c, tool === 'eraser' ? null : color);
+    render();
+  });
+
+  canvas.addEventListener('pointermove', e => {
+    if (!drawing) return;
+    const c = cellFromEvent(e);
+    if (!c) return;
+    line(lastCell, c, tool === 'eraser' ? null : color);
+    lastCell = c;
+    render();
+  });
+
+  function endStroke() {
+    if (!drawing) return;
+    drawing = false;
+    // якщо нічого не змінилось — прибираємо порожній крок історії
+    if (!strokeChanged) { undoStack.pop(); updateButtons(); }
+  }
+  canvas.addEventListener('pointerup', endStroke);
+  canvas.addEventListener('pointercancel', endStroke);
+
+  /* ---------- Колір ---------- */
+  const hex2 = n => n.toString(16).padStart(2, '0');
+  const toHex = (r, g, b) => '#' + hex2(r) + hex2(g) + hex2(b);
+  function parseHex(h) {
+    h = h.trim().replace('#', '');
+    if (h.length === 3) h = h.split('').map(ch => ch + ch).join('');
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+    return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  }
+
+  function setColor(hex) {
+    const rgb = parseHex(hex);
+    if (!rgb) return;
+    color = toHex(...rgb);
+    $('colorInput').value = color;
+    $('hexInput').value = color;
+    ['r', 'g', 'b'].forEach((k, i) => {
+      $(k + 'S').value = rgb[i];
+      $(k + 'N').value = rgb[i];
+    });
+    document.querySelectorAll('.sw').forEach(s =>
+      s.setAttribute('aria-pressed', s.dataset.color === color));
+    if (tool === 'eraser' || tool === 'pick') setTool('pen');
+  }
+
+  function buildPalette() {
+    const box = $('palette');
+    PRESETS.forEach(c => {
+      const b = document.createElement('button');
+      b.className = 'sw';
+      b.style.background = c;
+      b.dataset.color = c;
+      b.title = c;
+      b.setAttribute('aria-label', 'Колір ' + c);
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', () => setColor(c));
+      box.appendChild(b);
+    });
+  }
+
+  $('colorInput').addEventListener('input', e => setColor(e.target.value));
+  $('hexInput').addEventListener('input', e => {
+    if (parseHex(e.target.value) && /^#?[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(e.target.value.trim())) {
+      const keep = e.target.value;
+      setColor(keep);
+      e.target.value = keep;
+    }
+  });
+  $('hexInput').addEventListener('blur', e => { e.target.value = color; });
+  ['r', 'g', 'b'].forEach(k => {
+    const fromInput = e => {
+      const v = Math.max(0, Math.min(255, parseInt(e.target.value, 10) || 0));
+      $(k + 'S').value = v; $(k + 'N').value = v;
+      setColor(toHex(+$('rS').value, +$('gS').value, +$('bS').value));
+    };
+    $(k + 'S').addEventListener('input', fromInput);
+    $(k + 'N').addEventListener('input', fromInput);
+  });
+
+  /* ---------- Вибір інструмента та розміру ---------- */
+  function setTool(t) {
+    tool = t;
+    document.querySelectorAll('#tools .chip').forEach(b =>
+      b.setAttribute('aria-pressed', b.dataset.tool === t));
+  }
+  document.querySelectorAll('#tools .chip').forEach(b =>
+    b.addEventListener('click', () => setTool(b.dataset.tool)));
+
+  function isEmpty() { return pixels.every(p => p === null); }
+
+  function setSize(n) {
+    if (n === size) return;
+    if (!isEmpty() && !confirm('Зміна розміру очистить полотно. Продовжити?')) return;
+    size = n;
+    pixels = new Array(size * size).fill(null);
+    undoStack = []; redoStack = [];
+    document.querySelectorAll('#sizes .chip').forEach(b =>
+      b.setAttribute('aria-pressed', +b.dataset.size === size));
+    $('info').textContent = size + '×' + size;
+    render(); updateButtons();
+  }
+  document.querySelectorAll('#sizes .chip').forEach(b =>
+    b.addEventListener('click', () => setSize(+b.dataset.size)));
+
+  /* ---------- Кнопки ---------- */
+  $('undoBtn').addEventListener('click', undo);
+  $('redoBtn').addEventListener('click', redo);
+  $('clearBtn').addEventListener('click', () => {
+    if (isEmpty()) return;
+    pushHistory();
+    pixels = new Array(size * size).fill(null);
+    render();
+  });
+  $('gridToggle').addEventListener('change', e => { showGrid = e.target.checked; render(); });
+
+  $('saveBtn').addEventListener('click', () => {
+    const target = +$('exportSize').value;
+    const scale = target ? Math.max(1, Math.floor(target / size)) : 1;
+    const out = document.createElement('canvas');
+    out.width = out.height = size * scale;
+    const o = out.getContext('2d');
+    o.imageSmoothingEnabled = false;
+    if (!$('transparent').checked) {
+      o.fillStyle = '#ffffff';
+      o.fillRect(0, 0, out.width, out.height);
+    }
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const c = pixels[y * size + x];
+        if (c) { o.fillStyle = c; o.fillRect(x * scale, y * scale, scale, scale); }
+      }
+    }
+    out.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'pixel-art-' + size + 'x' + size + '.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, 'image/png');
+  });
+
+  /* ---------- Клавіші ---------- */
+  document.addEventListener('keydown', e => {
+    if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) &&
+        document.activeElement.type !== 'checkbox' && document.activeElement.type !== 'range') return;
+    const k = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (k === 'b' || k === 'и') setTool('pen');
+    else if (k === 'e' || k === 'у') setTool('eraser');
+    else if (k === 'g' || k === 'п') setTool('fill');
+    else if (k === 'i' || k === 'ш') setTool('pick');
+  });
+
+  /* ---------- Старт ---------- */
+  buildPalette();
+  setColor('#000000');
+  render();
+  updateButtons();
+})();
+</script>
+</body>
+</html>
