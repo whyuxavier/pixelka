@@ -138,11 +138,39 @@
       <!-- Size Picker -->
       <div>
         <label class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-2">Розмір сітки</label>
-        <div class="grid grid-cols-4 gap-1.5" id="sizes">
+        <div class="grid grid-cols-3 gap-1.5" id="sizes">
           <button class="py-1.5 rounded-lg text-xs font-semibold btn-tool" data-size="8" aria-pressed="false">8×8</button>
           <button class="py-1.5 rounded-lg text-xs font-semibold btn-tool" data-size="16" aria-pressed="true">16×16</button>
           <button class="py-1.5 rounded-lg text-xs font-semibold btn-tool" data-size="32" aria-pressed="false">32×32</button>
+        </div>
+
+        <!-- Other sizes (collapsed) -->
+        <button type="button" id="toggleSizesBtn" class="w-full flex items-center justify-between mt-2.5 text-[11px] font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-700 transition select-none">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-expand"></i> Інші розміри <span id="sizeCurrent" class="normal-case tracking-normal text-zinc-700"></span>
+          </span>
+          <i id="sizesArrow" class="fa-solid fa-chevron-right text-[10px] transition-transform duration-200"></i>
+        </button>
+
+        <div id="sizesContainer" class="hidden pt-2">
+        <div class="grid grid-cols-3 gap-1.5" id="moreSizes">
           <button class="py-1.5 rounded-lg text-xs font-semibold btn-tool" data-size="64" aria-pressed="false">64×64</button>
+          <button class="py-1.5 rounded-lg text-xs font-semibold btn-tool" data-cols="16" data-rows="8" aria-pressed="false" title="Горизонтальне полотно">16×8</button>
+          <button class="py-1.5 rounded-lg text-xs font-semibold btn-tool" data-cols="32" data-rows="16" aria-pressed="false" title="Горизонтальне полотно">32×16</button>
+          <button class="py-1.5 rounded-lg text-xs font-semibold btn-tool" data-cols="8" data-rows="16" aria-pressed="false" title="Вертикальне полотно">8×16</button>
+          <button class="py-1.5 rounded-lg text-xs font-semibold btn-tool" data-cols="16" data-rows="32" aria-pressed="false" title="Вертикальне полотно">16×32</button>
+        </div>
+
+        <!-- Custom width x height -->
+        <div class="flex items-center gap-1.5 mt-2.5">
+          <input id="colsInput" type="number" min="1" max="128" value="16" inputmode="numeric" aria-label="Ширина в клітинках" title="Ширина"
+                 class="w-14 py-1.5 text-center text-xs font-semibold rounded-lg bg-zinc-100 border border-zinc-200 text-zinc-800 focus:outline-none focus:border-zinc-900">
+          <span class="text-xs text-zinc-400">×</span>
+          <input id="rowsInput" type="number" min="1" max="128" value="16" inputmode="numeric" aria-label="Висота в клітинках" title="Висота"
+                 class="w-14 py-1.5 text-center text-xs font-semibold rounded-lg bg-zinc-100 border border-zinc-200 text-zinc-800 focus:outline-none focus:border-zinc-900">
+          <button id="applySize" type="button" class="flex-1 py-1.5 rounded-lg text-xs font-semibold btn-tool">Застосувати</button>
+        </div>
+        <p class="text-[10px] text-zinc-400 mt-1.5">Власний розмір: ширина × висота, від 1 до 128 клітинок</p>
         </div>
       </div>
 
@@ -208,7 +236,7 @@
 
       <!-- Export -->
       <div class="pt-2 border-t border-zinc-100 flex gap-2">
-        <select id="exportSize" class="bg-zinc-100 border border-zinc-200 rounded-xl px-2.5 py-2 text-xs font-medium text-zinc-700 focus:outline-none">
+        <select id="exportSize" title="Довша сторона зображення" class="bg-zinc-100 border border-zinc-200 rounded-xl px-2.5 py-2 text-xs font-medium text-zinc-700 focus:outline-none">
           <option value="512">512px</option>
           <option value="1024" selected>1024px</option>
           <option value="2048">2048px</option>
@@ -268,15 +296,17 @@
         '#000000','#ffffff','#71717a','#a1a1aa','#ef4444','#f97316','#f59e0b','#eab308',
         '#84cc16','#10b981','#06b6d4','#3b82f6','#6366f1','#8b5cf6','#ec4899','#f43f5e'
       ];
-      const CANVAS_PX = 512;
+      const MAX_CANVAS_PX = 512;
+      const MAX_CELLS = 128;
       const HISTORY_LIMIT = 50;
 
       const $ = id => document.getElementById(id);
       const canvas = $('canvas');
       const ctx = canvas.getContext('2d');
 
-      let size = 16;
-      let pixels = new Array(size * size).fill(null);
+      let cols = 16, rows = 16;
+      let cellPx = 32;
+      let pixels = new Array(cols * rows).fill(null);
       let color = '#000000';
       let tool = 'pen';
       let undoStack = [], redoStack = [];
@@ -374,7 +404,7 @@
           const cx = a.x, cy = a.y;
           for (let y = cy - ry; y <= cy + ry; y++) {
             for (let x = cx - rx; x <= cx + rx; x++) {
-              if (x < 0 || y < 0 || x >= size || y >= size) continue;
+              if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
               const dx = (x - cx) / (rx || 1);
               const dy = (y - cy) / (ry || 1);
               const val = dx*dx + dy*dy;
@@ -390,13 +420,13 @@
 
       // Render
       function render(previewPixels = []) {
-        const cell = CANVAS_PX / size;
-        ctx.clearRect(0, 0, CANVAS_PX, CANVAS_PX);
+        const cell = cellPx;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Draw Pixels
-        for (let y = 0; y < size; y++) {
-          for (let x = 0; x < size; x++) {
-            const c = pixels[y * size + x];
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            const c = pixels[y * cols + x];
             if (c) {
               ctx.fillStyle = c;
             } else {
@@ -410,7 +440,7 @@
         if (previewPixels.length) {
           ctx.fillStyle = color;
           for (const p of previewPixels) {
-            if (p.x >= 0 && p.y >= 0 && p.x < size && p.y < size) {
+            if (p.x >= 0 && p.y >= 0 && p.x < cols && p.y < rows) {
               ctx.fillRect(p.x * cell, p.y * cell, cell, cell);
             }
           }
@@ -420,10 +450,13 @@
         ctx.strokeStyle = 'rgba(0,0,0,0.06)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        for (let i = 1; i < size; i++) {
-          const p = Math.round(i * cell);
-          ctx.moveTo(p, 0); ctx.lineTo(p, CANVAS_PX);
-          ctx.moveTo(0, p); ctx.lineTo(CANVAS_PX, p);
+        for (let i = 1; i < cols; i++) {
+          const p = i * cell;
+          ctx.moveTo(p, 0); ctx.lineTo(p, canvas.height);
+        }
+        for (let i = 1; i < rows; i++) {
+          const p = i * cell;
+          ctx.moveTo(0, p); ctx.lineTo(canvas.width, p);
         }
         ctx.stroke();
       }
@@ -456,7 +489,7 @@
 
       $('clearBtn').addEventListener('click', () => {
         pushHistory();
-        pixels = new Array(size * size).fill(null);
+        pixels = new Array(cols * rows).fill(null);
         render();
       });
 
@@ -464,15 +497,15 @@
         const rect = canvas.getBoundingClientRect();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        const x = Math.floor((clientX - rect.left) / rect.width * size);
-        const y = Math.floor((clientY - rect.top) / rect.height * size);
-        if (x < 0 || x >= size || y < 0 || y >= size) return null;
+        const x = Math.floor((clientX - rect.left) / rect.width * cols);
+        const y = Math.floor((clientY - rect.top) / rect.height * rows);
+        if (x < 0 || x >= cols || y < 0 || y >= rows) return null;
         return { x, y };
       }
 
       function applyTool(coords) {
         if (!coords) return;
-        const idx = coords.y * size + coords.x;
+        const idx = coords.y * cols + coords.x;
 
         if (tool === 'pen') {
           pixels[idx] = color;
@@ -498,13 +531,13 @@
             if (visited.has(key)) continue;
             visited.add(key);
 
-            const i = y * size + x;
+            const i = y * cols + x;
             if (pixels[i] === targetColor) {
               pixels[i] = color;
               if (x > 0) queue.push({ x: x - 1, y });
-              if (x < size - 1) queue.push({ x: x + 1, y });
+              if (x < cols - 1) queue.push({ x: x + 1, y });
               if (y > 0) queue.push({ x, y: y - 1 });
-              if (y < size - 1) queue.push({ x, y: y + 1 });
+              if (y < rows - 1) queue.push({ x, y: y + 1 });
             }
           }
           render();
@@ -550,8 +583,8 @@
           const isFill = $('fillShapes').checked;
           const cells = shapeCells(tool, shapeStart, shapeEnd, isFill);
           for (const p of cells) {
-            if (p.x >= 0 && p.y >= 0 && p.x < size && p.y < size) {
-              pixels[p.y * size + p.x] = color;
+            if (p.x >= 0 && p.y >= 0 && p.x < cols && p.y < rows) {
+              pixels[p.y * cols + p.x] = color;
             }
           }
           shapeStart = null; shapeEnd = null;
@@ -578,40 +611,88 @@
         btn.addEventListener('click', () => selectTool(btn));
       });
 
-      // Size Picker
-      document.querySelectorAll('#sizes button').forEach(btn => {
+      // Grid size (square presets, rectangular presets, custom width x height)
+      function syncSizeUI() {
+        document.querySelectorAll('#sizes button, #moreSizes button').forEach(b => {
+          const c = parseInt(b.dataset.cols || b.dataset.size, 10);
+          const r = parseInt(b.dataset.rows || b.dataset.size, 10);
+          b.setAttribute('aria-pressed', String(c === cols && r === rows));
+        });
+        // Show the current size next to "Інші розміри" when it isn't one of the main three
+        const isMain = cols === rows && [8, 16, 32].includes(cols);
+        $('sizeCurrent').textContent = isMain ? '' : `· ${cols}×${rows}`;
+      }
+
+      $('toggleSizesBtn').addEventListener('click', () => {
+        const hidden = $('sizesContainer').classList.toggle('hidden');
+        $('sizesArrow').classList.toggle('rotate-90', !hidden);
+      });
+
+      function setGrid(c, r) {
+        cols = c; rows = r;
+        pixels = new Array(cols * rows).fill(null);
+        undoStack = []; redoStack = [];
+
+        // Whole-number cell size keeps pixels crisp
+        cellPx = Math.max(1, Math.floor(MAX_CANVAS_PX / Math.max(cols, rows)));
+        canvas.width = cols * cellPx;
+        canvas.height = rows * cellPx;
+
+        // Fit the canvas frame to the grid proportions inside the square area
+        const frame = canvas.parentElement;
+        frame.style.width = (cols >= rows ? 100 : (cols / rows) * 100) + '%';
+        frame.style.height = (rows >= cols ? 100 : (rows / cols) * 100) + '%';
+
+        $('colsInput').value = cols;
+        $('rowsInput').value = rows;
+        syncSizeUI();
+        updateButtons();
+        render();
+      }
+
+      document.querySelectorAll('#sizes button, #moreSizes button').forEach(btn => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('#sizes button').forEach(b => b.setAttribute('aria-pressed', 'false'));
-          btn.setAttribute('aria-pressed', 'true');
-          size = parseInt(btn.dataset.size);
-          pixels = new Array(size * size).fill(null);
-          undoStack = []; redoStack = [];
-          updateButtons();
-          render();
+          setGrid(
+            parseInt(btn.dataset.cols || btn.dataset.size, 10),
+            parseInt(btn.dataset.rows || btn.dataset.size, 10)
+          );
         });
       });
 
-      // Save PNG
+      function applyCustomSize() {
+        const clamp = (v, fallback) => {
+          const n = parseInt(v, 10);
+          return Number.isNaN(n) ? fallback : Math.min(MAX_CELLS, Math.max(1, n));
+        };
+        setGrid(clamp($('colsInput').value, cols), clamp($('rowsInput').value, rows));
+      }
+      $('applySize').addEventListener('click', applyCustomSize);
+      ['colsInput', 'rowsInput'].forEach(id => {
+        $(id).addEventListener('keydown', e => { if (e.key === 'Enter') applyCustomSize(); });
+      });
+
+      // Save PNG (the selected size is the longer side of the image)
       $('saveBtn').addEventListener('click', () => {
-        const outSize = parseInt($('exportSize').value);
+        const target = parseInt($('exportSize').value, 10);
+        const scale = Math.max(1, Math.floor(target / Math.max(cols, rows)));
         const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = outSize; tempCanvas.height = outSize;
+        tempCanvas.width = cols * scale;
+        tempCanvas.height = rows * scale;
         const tCtx = tempCanvas.getContext('2d');
         tCtx.imageSmoothingEnabled = false;
 
-        const cell = outSize / size;
-        for (let y = 0; y < size; y++) {
-          for (let x = 0; x < size; x++) {
-            const c = pixels[y * size + x];
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            const c = pixels[y * cols + x];
             if (c) {
               tCtx.fillStyle = c;
-              tCtx.fillRect(x * cell, y * cell, cell, cell);
+              tCtx.fillRect(x * scale, y * scale, scale, scale);
             }
           }
         }
 
         const link = document.createElement('a');
-        link.download = `pixel-art-${size}x${size}.png`;
+        link.download = `pixel-art-${cols}x${rows}.png`;
         link.href = tempCanvas.toDataURL('image/png');
         link.click();
       });
@@ -657,7 +738,7 @@
       infoModal.addEventListener('click', (e) => { if (e.target === infoModal) hideModal(); });
 
       $('year').textContent = new Date().getFullYear();
-      render();
+      setGrid(16, 16);
     })();
   </script>
 </body>
