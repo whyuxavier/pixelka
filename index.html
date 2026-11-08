@@ -6,7 +6,15 @@
   <title>Піксельна малювалка</title>
   <!-- Modern SVG Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2318181b'/><text x='50%' y='68%' font-family='sans-serif' font-weight='800' font-size='50' fill='%23ffffff' text-anchor='middle'>🎨</text></svg>">
-  
+
+  <!-- PWA: встановлення як додаток -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#fcfcfc">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Пікселька">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -68,6 +76,9 @@
       border-color: #18181b;
     }
 
+    /* PWA: атрибут hidden має бути сильнішим за класи Tailwind */
+    #installBtn[hidden], #iosInstallHint[hidden] { display: none !important; }
+
     /* Custom Scrollbar */
     ::-webkit-scrollbar {
       width: 5px;
@@ -113,6 +124,18 @@
         </button>
 
         <div class="h-5 w-px bg-zinc-200 mx-1"></div>
+
+        <!-- PWA: кнопка встановлення (прихована, поки браузер не дозволить) -->
+        <div class="relative">
+          <button id="installBtn" type="button" hidden aria-label="Встановити як додаток" title="Встановити як додаток"
+                  class="h-8 sm:h-9 px-2.5 sm:px-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 flex items-center justify-center gap-1.5 text-zinc-700 text-xs font-semibold transition-all">
+            <span aria-hidden="true">⬇</span><span class="hidden sm:inline">Встановити як додаток</span>
+          </button>
+          <div id="iosInstallHint" role="tooltip" hidden
+               class="absolute right-0 top-full mt-2 w-56 p-3 rounded-xl bg-white border border-zinc-200 shadow-xl text-xs text-zinc-600 leading-relaxed z-50">
+            Щоб встановити на iPhone: натисніть <b class="text-zinc-900">Поділитися</b> → <b class="text-zinc-900">На початковий екран</b>.
+          </div>
+        </div>
 
         <button id="infoBtn" aria-label="Інформація та підказки"
                 class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 flex items-center justify-center text-zinc-800 font-serif italic text-sm font-bold transition-all shadow-sm">
@@ -739,6 +762,63 @@
 
       $('year').textContent = new Date().getFullYear();
       setGrid(16, 16);
+    })();
+  </script>
+
+  <!-- PWA: встановлення та service worker -->
+  <script>
+    (() => {
+      const installBtn = document.getElementById('installBtn');
+      const iosHint = document.getElementById('iosInstallHint');
+      let deferredPrompt = null;
+
+      const isStandalone = () =>
+        window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+      const hideInstall = () => {
+        installBtn.hidden = true;
+        iosHint.hidden = true;
+        deferredPrompt = null;
+      };
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.hidden = false;
+      });
+
+      window.addEventListener('appinstalled', hideInstall);
+
+      installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+          const promptEvent = deferredPrompt;
+          deferredPrompt = null;
+          promptEvent.prompt();
+          try {
+            const choice = await promptEvent.userChoice;
+            if (choice && choice.outcome === 'accepted') hideInstall();
+          } catch (err) { /* ignore */ }
+          return;
+        }
+        if (isIOS) iosHint.hidden = !iosHint.hidden;
+      });
+
+      // iPhone/iPad: beforeinstallprompt немає, тож показуємо кнопку з підказкою
+      if (isIOS && !isStandalone()) installBtn.hidden = false;
+
+      document.addEventListener('click', (e) => {
+        if (!iosHint.hidden && !iosHint.contains(e.target) && e.target !== installBtn && !installBtn.contains(e.target)) {
+          iosHint.hidden = true;
+        }
+      });
+
+      if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service worker не зареєстровано:', err));
+        });
+      }
     })();
   </script>
 </body>
