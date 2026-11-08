@@ -333,6 +333,8 @@
       let color = '#000000';
       let tool = 'pen';
       let undoStack = [], redoStack = [];
+      // Малюнок до зміни розміру: якщо полотно зменшили й обрізали краї, при збільшенні вони повернуться
+      let sizeSource = null;
       let isDrawing = false;
       let shapeStart = null, shapeEnd = null;
 
@@ -485,6 +487,7 @@
       }
 
       function pushHistory() {
+        sizeSource = null; // малюнок змінено — далі масштабуємо вже нову версію
         undoStack.push(pixels.slice());
         if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
         redoStack = [];
@@ -651,9 +654,27 @@
         $('sizesArrow').classList.toggle('rotate-90', !hidden);
       });
 
+      // Переносить малюнок на нову сітку без масштабування: кожен піксель лишається пікселем.
+      // Малюнок ставиться по центру; на меншому полотні краї, що не влазять, обрізаються.
+      function placePixels(src, oc, or, nc, nr) {
+        const out = new Array(nc * nr).fill(null);
+        const dx = Math.floor((nc - oc) / 2), dy = Math.floor((nr - or) / 2);
+        for (let y = 0; y < or; y++) {
+          const ny = y + dy;
+          if (ny < 0 || ny >= nr) continue;
+          for (let x = 0; x < oc; x++) {
+            const nx = x + dx;
+            if (nx < 0 || nx >= nc) continue;
+            out[ny * nc + nx] = src[y * oc + x];
+          }
+        }
+        return out;
+      }
+
       function setGrid(c, r) {
+        if (!sizeSource) sizeSource = { pixels: pixels.slice(), cols, rows };
         cols = c; rows = r;
-        pixels = new Array(cols * rows).fill(null);
+        pixels = placePixels(sizeSource.pixels, sizeSource.cols, sizeSource.rows, cols, rows);
         undoStack = []; redoStack = [];
 
         // Whole-number cell size keeps pixels crisp
