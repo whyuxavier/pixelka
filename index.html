@@ -118,6 +118,11 @@
                 class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 flex items-center justify-center text-zinc-700 text-xs sm:text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all">
           <i class="fa-solid fa-rotate-right"></i>
         </button>
+        <button id="imgBtn" title="Вставити зображення (або Ctrl+V, або перетягни файл на полотно)" aria-label="Вставити зображення"
+                class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 flex items-center justify-center text-zinc-700 text-xs sm:text-sm transition-all">
+          <i class="fa-solid fa-image"></i>
+        </button>
+        <input id="imgInput" type="file" accept="image/*" class="hidden">
         <button id="clearBtn" title="Очистити полотно"
                 class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-zinc-100 hover:bg-rose-100 border border-zinc-200 hover:border-rose-200 text-zinc-700 hover:text-rose-600 text-xs sm:text-sm transition-all">
           <i class="fa-solid fa-trash-can"></i>
@@ -307,6 +312,7 @@
           <li><span class="font-mono bg-zinc-100 px-1 rounded border border-zinc-200">L</span> Лінія</li>
           <li><span class="font-mono bg-zinc-100 px-1 rounded border border-zinc-200">R</span> Квадрат</li>
           <li><span class="font-mono bg-zinc-100 px-1 rounded border border-zinc-200">Ctrl+Z</span> Назад</li>
+          <li class="col-span-2"><span class="font-mono bg-zinc-100 px-1 rounded border border-zinc-200">Ctrl+V</span> Вставити зображення — воно стане пікселями</li>
         </ul>
       </div>
     </div>
@@ -740,6 +746,59 @@
         link.href = tempCanvas.toDataURL('image/png');
         link.click();
       });
+
+      // Вставка зображення: кнопка, Ctrl+V або перетягування файлу — картинка перетворюється на пікселі поточного полотна
+      function importImage(src) {
+        const img = new Image();
+        img.onload = () => {
+          const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          if (!w || !h) return;
+          const k = Math.min(cols / w, rows / h);
+          const dw = Math.max(1, Math.round(w * k)), dh = Math.max(1, Math.round(h * k));
+          const ox = Math.floor((cols - dw) / 2), oy = Math.floor((rows - dh) / 2);
+          // поступове зменшення — кольори виходять рівнішими
+          let cur = img, cw = w, ch = h;
+          while (cw / 2 > dw && ch / 2 > dh) {
+            const t = document.createElement('canvas');
+            t.width = Math.max(dw, Math.round(cw / 2)); t.height = Math.max(dh, Math.round(ch / 2));
+            const tx = t.getContext('2d'); tx.imageSmoothingQuality = 'high';
+            tx.drawImage(cur, 0, 0, t.width, t.height);
+            cur = t; cw = t.width; ch = t.height;
+          }
+          const c = document.createElement('canvas'); c.width = dw; c.height = dh;
+          const x = c.getContext('2d', { willReadFrequently: true }); x.imageSmoothingQuality = 'high';
+          x.drawImage(cur, 0, 0, dw, dh);
+          const d = x.getImageData(0, 0, dw, dh).data;
+          pushHistory();
+          const hex = v => v.toString(16).padStart(2, '0');
+          for (let yy = 0; yy < dh; yy++) for (let xx = 0; xx < dw; xx++) {
+            const i = (yy * dw + xx) * 4, px = ox + xx, py = oy + yy;
+            if (px < 0 || py < 0 || px >= cols || py >= rows) continue;
+            pixels[py * cols + px] = d[i + 3] < 128 ? null : '#' + hex(d[i]) + hex(d[i + 1]) + hex(d[i + 2]);
+          }
+          render(); updateButtons();
+        };
+        img.onerror = () => alert('Не вдалося відкрити це зображення. Спробуй PNG або JPG.');
+        img.src = src;
+      }
+      function importFile(file) {
+        if (!file || !/^image\//.test(file.type)) return false;
+        const r = new FileReader();
+        r.onload = () => importImage(r.result);
+        r.readAsDataURL(file);
+        return true;
+      }
+      $('imgBtn').addEventListener('click', () => $('imgInput').click());
+      $('imgInput').addEventListener('change', e => { importFile(e.target.files[0]); e.target.value = ''; });
+      document.addEventListener('paste', e => {
+        if (e.target.tagName === 'INPUT') return;
+        const it = [...(e.clipboardData ? e.clipboardData.items : [])].find(i => i.type.startsWith('image/'));
+        if (it) { e.preventDefault(); importFile(it.getAsFile()); }
+      });
+      const dropArea = canvas.parentElement;
+      ['dragenter', 'dragover'].forEach(ev => dropArea.addEventListener(ev, e => { if ([...e.dataTransfer.types].includes('Files')) { e.preventDefault(); dropArea.style.outline = '3px dashed #71717a'; } }));
+      ['dragleave', 'drop'].forEach(ev => dropArea.addEventListener(ev, () => { dropArea.style.outline = ''; }));
+      dropArea.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) { e.preventDefault(); importFile(f); } });
 
       // Hotkeys
       document.addEventListener('keydown', (e) => {
